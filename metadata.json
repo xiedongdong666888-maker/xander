@@ -1,0 +1,8 @@
+{
+  "name": "Remix: 星云作品集",
+  "description": "一个充满未来感、科幻主题的作品集网站，包含互动元素和AI驱动的探索功能。",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

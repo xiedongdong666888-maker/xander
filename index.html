@@ -1,0 +1,183 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>星云 | 未来作品集</title>
+    <script>
+      // Polyfill process for browser environment to prevent third-party crashes
+      window.process = window.process || {
+        env: {
+          API_KEY: "",
+          GEMINI_API_KEY: ""
+        },
+        versions: {}
+      };
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'space-black': '#030014', /* Deep Indigo Black */
+              'deep-void': '#050510',
+              'neon-cyan': '#2997FF', /* Apple-like Blue */
+              'neon-purple': '#BF5AF2', /* Apple-like Purple */
+              'glass-border': 'rgba(255, 255, 255, 0.15)',
+            },
+            fontFamily: {
+              orbitron: ['"Orbitron"', 'sans-serif'],
+              rajdhani: ['"Rajdhani"', 'sans-serif'],
+            },
+            animation: {
+              'float': 'float 10s ease-in-out infinite',
+              'pulse-slow': 'pulse 8s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'nebula-float': 'nebulaFloat 25s ease-in-out infinite alternate',
+              'nebula-float-delayed': 'nebulaFloatDelayed 30s ease-in-out infinite alternate-reverse',
+            },
+            keyframes: {
+              float: {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-30px)' },
+              },
+              nebulaFloat: {
+                '0%': { transform: 'translate(0, 0) scale(1)' },
+                '33%': { transform: 'translate(50px, -30px) scale(1.1)' },
+                '66%': { transform: 'translate(-30px, 50px) scale(0.95)' },
+                '100%': { transform: 'translate(0, 0) scale(1)' },
+              },
+              nebulaFloatDelayed: {
+                '0%': { transform: 'translate(0, 0) scale(1)' },
+                '33%': { transform: 'translate(-50px, 40px) scale(1.15)' },
+                '66%': { transform: 'translate(40px, -50px) scale(0.9)' },
+                '100%': { transform: 'translate(0, 0) scale(1)' },
+              }
+            }
+          },
+        },
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@1,400;1,500;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+      html {
+        background-color: #030014; /* Standard deep dark base */
+      }
+      body {
+        background-color: transparent;
+        color: #F5F5F7;
+        overflow-x: hidden;
+        cursor: none; /* Hide default cursor */
+      }
+      
+      /* Restore default cursor during fullscreen functionality */
+      :fullscreen {
+        cursor: auto !important;
+      }
+      :-webkit-full-screen {
+        cursor: auto !important;
+      }
+      :-moz-full-screen {
+        cursor: auto !important;
+      }
+      :-ms-fullscreen {
+        cursor: auto !important;
+      }
+      
+      /* Smooth Scrolling */
+      html {
+        scroll-behavior: smooth;
+      }
+
+      ::-webkit-scrollbar {
+        width: 0px;
+        background: transparent;
+      }
+
+      /* Apple-style Liquid Glass Effect - Neutralized for dynamic backgrounds */
+      .liquid-glass {
+        background: rgba(255, 255, 255, 0.03); /* Lighter, more neutral base */
+        backdrop-filter: blur(25px) saturate(140%);
+        -webkit-backdrop-filter: blur(25px) saturate(140%);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* Inner shine reflection */
+      .liquid-glass::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 50%;
+        height: 100%;
+        background: linear-gradient(
+          to right,
+          transparent,
+          rgba(255, 255, 255, 0.08),
+          transparent
+        );
+        transform: skewX(-25deg);
+        transition: 0.5s;
+        pointer-events: none;
+      }
+
+      .liquid-glass:hover::before {
+        left: 150%;
+        transition: 0.7s;
+      }
+
+      .liquid-glass:hover {
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 20px 50px 0 rgba(0, 0, 0, 0.4);
+        transform: translateY(-5px) scale(1.005);
+      }
+
+      /* Noise Texture - Subtle film grain */
+      .noise-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 9999;
+        opacity: 0.04;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        mix-blend-mode: overlay;
+      }
+
+      /* Text Selection */
+      ::selection {
+        background: rgba(41, 151, 255, 0.3);
+        color: white;
+      }
+
+      /* Animations needed for ChatBot */
+      @keyframes fade-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes slide-in-from-bottom-5 {
+        from { transform: translateY(1.25rem); }
+        to { transform: translateY(0); }
+      }
+      .animate-in { animation-duration: 300ms; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+      .fade-in { animation-name: fade-in; }
+      .slide-in-from-bottom-5 { animation-name: slide-in-from-bottom-5; }
+    </style>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <div class="noise-overlay"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>
