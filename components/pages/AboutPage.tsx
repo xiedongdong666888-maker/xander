@@ -2,6 +2,7 @@ import React from 'react';
 import { Fingerprint, MapPin, Mail, Award, GraduationCap, Briefcase, Trophy, Scroll, Star } from 'lucide-react';
 import { PageState } from '../../types';
 import GlowingFooter from '../GlowingFooter';
+import ThreeDShowcase from '../ThreeDShowcase';
 
 interface AboutPageProps {
   onNavigate?: (page: PageState) => void;
@@ -84,6 +85,11 @@ const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
                   </div>
               </div>
           </div>
+        </div>
+
+        {/* 3D Holographic Matrix Showcase Section */}
+        <div className="w-full mb-24">
+          <ThreeDShowcase />
         </div>
 
         {/* 2. Experience Timeline */}

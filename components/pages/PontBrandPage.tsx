@@ -4,8 +4,12 @@ import Hls from 'hls.js';
 import { 
   ArrowRight, Sparkles, Droplet, Leaf, X, ChevronRight, ChevronLeft,
   Check, Info, Sparkle, Heart, RefreshCw, Shield, HelpCircle,
-  Compass, Zap, Award, Users, BookOpen, MessageSquare, Plus, Minus
+  Compass, Zap, Award, Users, BookOpen, MessageSquare, Plus, Minus,
+  Play
 } from 'lucide-react';
+import { PontLoader } from '../ui/PontLoader';
+import { FocusRail, type FocusRailItem } from '../ui/focus-rail';
+import { ImageAutoSlider } from '../ui/image-auto-slider';
 
 interface PontBrandPageProps {
   onClose: () => void;
@@ -25,6 +29,49 @@ interface Product {
   imageUrl: string;
   accentColor: string;
 }
+
+const DEMO_ITEMS: FocusRailItem[] = [
+  {
+    id: 1,
+    title: "山茶花氨基酸洁面乳",
+    description: "温和弱酸性洁颜，舒缓受损泛红屏障，洗后柔嫩透亮、不紧绷，唤醒肌肤纯净自愈力。",
+    meta: "AMINO ACID • CLEANSER",
+    imageSrc: "https://i.postimg.cc/B6frnB7D/1.png",
+    href: "#cleanser",
+  },
+  {
+    id: 2,
+    title: "多肽高能赋活精华",
+    description: "蕴含立体黄金多肽，精准淡化动态干纹细纹，层层饱满紧致，重塑面部立体流线轮廓。",
+    meta: "ACTIVE PEPTIDE • ESSENCE",
+    imageSrc: "https://i.postimg.cc/Hx1qk9vy/2.png",
+    href: "#essence",
+  },
+  {
+    id: 3,
+    title: "极简奢护意境礼盒",
+    description: "汲取大地沙色与温润几何线条灵感，倾呈经典密集护肤仪式，臻享奢美感官体验。",
+    meta: "ELEGANT RITUAL • GIFT SET",
+    imageSrc: "https://i.postimg.cc/zBYsGF2K/3.png",
+    href: "#giftset",
+  },
+  {
+    id: 4,
+    title: "微分子精细调理水",
+    description: "极速深层立体渗透，瞬时改善粗糙干燥缺水，建立肌肤透气储水网，尽显匀净水光感。",
+    meta: "MICRO-MOLECULE • TONER",
+    imageSrc: "https://i.postimg.cc/k4P0gvYW/4.png",
+    href: "#toner",
+  },
+  {
+    id: 5,
+    title: "轻盈高透保水乳液",
+    description: "清爽触肤即化，高效锁定面部活性机能，重构皮脂膜，构筑全天候强韧的水油平衡屏障。",
+    meta: "BARRIER DEFENSE • LOTION",
+    imageSrc: "https://i.postimg.cc/rmGv0R70/5.png",
+    href: "#lotion",
+  },
+];
 
 const PRODUCTS: Product[] = [
   {
@@ -151,6 +198,9 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
   // Navigation tabs or section index
   const [activeTab, setActiveTab] = useState<'PROTOCOL' | 'INGREDIENTS' | 'RESULTS' | 'CONSULTATION'>('PROTOCOL');
   
+  // Custom luxury loader state matching picture 2
+  const [isPontLoading, setIsPontLoading] = useState(true);
+  
   // Immersive video cover section states
   const [isScrollLocked, setIsScrollLocked] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -160,6 +210,16 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
   const [isMuted, setIsMuted] = useState(true);
   const [showMainTitle, setShowMainTitle] = useState(true);
   const [showProductCategories, setShowProductCategories] = useState(false);
+  const [showFiftyPercentMessage, setShowFiftyPercentMessage] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
+  const [scrollTop, setScrollTop] = useState(0);
+
+  const handleClose = () => {
+    setIsExiting(true);
+    setTimeout(() => {
+      onClose();
+    }, 850);
+  };
 
   const containerRef = React.useRef<HTMLDivElement>(null);
   const videoRef = React.useRef<HTMLVideoElement>(null);
@@ -176,7 +236,290 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
   // States for interactive sub-sections
   const [starVolume, setStarVolume] = useState<'30ml' | '50ml' | '80ml'>('30ml');
   const [activeAccordion, setActiveAccordion] = useState<number | null>(0);
-  const [activeIngredientIndex, setActiveIngredientIndex] = useState<number>(0);
+
+  // Video expansion scroll progress and ref
+  const [videoScrollProgress, setVideoScrollProgress] = useState(0);
+  const videoScrollProgressRef = React.useRef(0);
+  const beautyFilmTouchStartY = React.useRef(0);
+  const beautyFilmSectionRef = React.useRef<HTMLDivElement>(null);
+  const [beautyFilmPlaying, setBeautyFilmPlaying] = useState(true);
+  const [beautyFilmMuted, setBeautyFilmMuted] = useState(true);
+  const beautyFilmRef = React.useRef<HTMLVideoElement>(null);
+  const mediaCardRef = React.useRef<HTMLDivElement>(null);
+
+  const [beautyFilmCurrentTime, setBeautyFilmCurrentTime] = useState(0);
+  const [beautyFilmDuration, setBeautyFilmDuration] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [beautyFilmVolume, setBeautyFilmVolume] = useState(1);
+  const [beautyFilmSpeed, setBeautyFilmSpeed] = useState(1);
+  const [isHoveringMedia, setIsHoveringMedia] = useState(false);
+  const [isFullscreenActive, setIsFullscreenActive] = useState(true);
+  const [isBeautyFilmLocked, setIsBeautyFilmLocked] = useState(false);
+
+  // Resolution/Quality state for Beauty Film
+  const [beautyFilmLevels, setBeautyFilmLevels] = useState<{ index: number; height: number; bitrate: number }[]>([]);
+  const [beautyFilmQuality, setBeautyFilmQuality] = useState<number>(-1); // -1 = Auto
+  const [showQualityMenu, setShowQualityMenu] = useState<boolean>(false);
+  const hlsInstanceRef = React.useRef<Hls | null>(null);
+
+  const formatTime = (secs: number) => {
+    if (isNaN(secs) || !isFinite(secs)) return '00:00';
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const handleChangeBeautyFilmQuality = (levelIndex: number) => {
+    setBeautyFilmQuality(levelIndex);
+    const hls = hlsInstanceRef.current;
+    if (hls) {
+      hls.currentLevel = levelIndex;
+      hls.loadLevel = levelIndex;
+    }
+  };
+
+  const getQualityName = () => {
+    if (beautyFilmQuality === -1) return '自动';
+    const lvl = beautyFilmLevels.find(l => l.index === beautyFilmQuality);
+    if (!lvl) return '2K 超清'; // Default fallback indicating premium 2K
+    if (lvl.height >= 1440) return '2K 极清';
+    if (lvl.height >= 1080) return '1080P 超清';
+    if (lvl.height >= 720) return '720P 高清';
+    return `${lvl.height}P`;
+  };
+
+  // Close quality menu on global window click
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      setShowQualityMenu(false);
+    };
+    window.addEventListener('click', handleGlobalClick);
+    return () => {
+      window.removeEventListener('click', handleGlobalClick);
+    };
+  }, []);
+
+  // Initialize HLS for beauty film
+  useEffect(() => {
+    const video = beautyFilmRef.current;
+    if (!video) return;
+
+    const streamUrl = "https://stream.mux.com/BsS01SbPm1qJGXfSGOk00AOkeSmEAPm02qZ7rgpmzINfEI.m3u8";
+
+    let hlsInstance: Hls | null = null;
+
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Native support (Safari, iOS)
+      video.src = streamUrl;
+    } else if (Hls.isSupported()) {
+      // Hls.js support (Chrome, Firefox, etc.)
+      hlsInstance = new Hls({
+        autoStartLoad: false,
+        maxMaxBufferLength: 30,
+        maxBufferLength: 20,
+        maxBufferSize: 100 * 1024 * 1024,
+        abrEwmaDefaultEstimate: 150000000, // Force a very high starting bandwidth estimation (150Mbps) for instant 2K/HD quality
+        capLevelToPlayerSize: false, // Ensure we don't limit quality based on player's initial small container size!
+      });
+
+      hlsInstanceRef.current = hlsInstance;
+
+      hlsInstance.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+        if (data.levels && data.levels.length > 0) {
+          // Parse and store all available quality levels
+          const levelsList = data.levels.map((level, idx) => ({
+            index: idx,
+            height: level.height || 0,
+            bitrate: level.bandwidth || 0,
+          })).sort((a, b) => b.height - a.height);
+          setBeautyFilmLevels(levelsList);
+
+          // Find the absolute highest quality level dynamically
+          let targetIndex = 0;
+          let maxHeight = 0;
+          let maxBandwidth = 0;
+          data.levels.forEach((level, index) => {
+            if (level.height && level.height > maxHeight) {
+              maxHeight = level.height;
+              targetIndex = index;
+              maxBandwidth = level.bandwidth;
+            } else if (level.height === maxHeight && level.bandwidth > maxBandwidth) {
+              targetIndex = index;
+              maxBandwidth = level.bandwidth;
+            }
+          });
+
+          // Lock to the absolute highest 2K/1080p quality level by default to prioritize ultra-clarity!
+          hlsInstance!.startLevel = targetIndex;
+          hlsInstance!.currentLevel = targetIndex;
+          hlsInstance!.loadLevel = targetIndex;
+          setBeautyFilmQuality(targetIndex);
+
+          hlsInstance!.startLoad();
+        }
+      });
+
+      hlsInstance.loadSource(streamUrl);
+      hlsInstance.attachMedia(video);
+    }
+
+    return () => {
+      if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstanceRef.current = null;
+      }
+    };
+  }, []);
+
+  // Hook up event listeners for video current time and duration
+  useEffect(() => {
+    const video = beautyFilmRef.current;
+    if (!video) return;
+
+    const handleTimeUpdate = () => {
+      setBeautyFilmCurrentTime(video.currentTime);
+    };
+
+    const handleDurationChange = () => {
+      setBeautyFilmDuration(video.duration || 0);
+    };
+
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    video.addEventListener('durationchange', handleDurationChange);
+    video.addEventListener('loadedmetadata', handleDurationChange);
+
+    return () => {
+      video.removeEventListener('timeupdate', handleTimeUpdate);
+      video.removeEventListener('durationchange', handleDurationChange);
+      video.removeEventListener('loadedmetadata', handleDurationChange);
+    };
+  }, []);
+
+  // Programmatic syncing of playing state
+  useEffect(() => {
+    const video = beautyFilmRef.current;
+    if (!video) return;
+
+    if (beautyFilmPlaying) {
+      video.play().catch(err => {
+        console.log("Play interrupted or blocked:", err);
+      });
+    } else {
+      video.pause();
+    }
+  }, [beautyFilmPlaying]);
+
+  // Programmatic syncing of muted state
+  useEffect(() => {
+    const video = beautyFilmRef.current;
+    if (!video) return;
+    video.muted = beautyFilmMuted;
+  }, [beautyFilmMuted]);
+
+  // Programmatic syncing of volume
+  useEffect(() => {
+    const video = beautyFilmRef.current;
+    if (!video) return;
+    video.volume = beautyFilmVolume;
+    if (beautyFilmVolume > 0 && beautyFilmMuted) {
+      setBeautyFilmMuted(false);
+    } else if (beautyFilmVolume === 0 && !beautyFilmMuted) {
+      setBeautyFilmMuted(true);
+    }
+  }, [beautyFilmVolume]);
+
+  // Programmatic syncing of playback rate
+  useEffect(() => {
+    const video = beautyFilmRef.current;
+    if (!video) return;
+    video.playbackRate = beautyFilmSpeed;
+  }, [beautyFilmSpeed]);
+
+  const handleTogglePlayBeautyFilm = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const nextPlaying = !beautyFilmPlaying;
+    setBeautyFilmPlaying(nextPlaying);
+  };
+
+  const handleToggleMuteBeautyFilm = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const nextMute = !beautyFilmMuted;
+    setBeautyFilmMuted(nextMute);
+  };
+
+  const handleToggleFullscreen = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const container = mediaCardRef.current;
+    if (!container) return;
+
+    if (!document.fullscreenElement) {
+      container.requestFullscreen().then(() => {
+        setIsFullscreen(true);
+      }).catch(err => {
+        console.error("Error attempting to enable fullscreen:", err);
+      });
+    } else {
+      document.exitFullscreen().then(() => {
+        setIsFullscreen(false);
+      });
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === mediaCardRef.current);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  // Track user inactivity during fullscreen and auto-hide controls after 3 seconds
+  useEffect(() => {
+    if (!isFullscreen) {
+      setIsFullscreenActive(true);
+      return;
+    }
+
+    let timeoutId: NodeJS.Timeout;
+
+    const resetTimer = () => {
+      setIsFullscreenActive(true);
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setIsFullscreenActive(false);
+      }, 3000);
+    };
+
+    // Initialize timer
+    resetTimer();
+
+    const container = mediaCardRef.current;
+    if (container) {
+      container.addEventListener('mousemove', resetTimer);
+      container.addEventListener('click', resetTimer);
+      container.addEventListener('touchstart', resetTimer);
+    }
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (container) {
+        container.removeEventListener('mousemove', resetTimer);
+        container.removeEventListener('click', resetTimer);
+        container.removeEventListener('touchstart', resetTimer);
+      }
+    };
+  }, [isFullscreen]);
+
+  // Autoplay or pause the beauty film based on expansion scroll progress
+  useEffect(() => {
+    if (videoScrollProgress >= 0.98) {
+      setBeautyFilmPlaying(true);
+    } else {
+      setBeautyFilmPlaying(false);
+    }
+  }, [videoScrollProgress]);
 
   // Image auto-slider state for Product Lineup Showcase
   const [sliderIndex, setSliderIndex] = useState<number>(0);
@@ -185,6 +528,12 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
   
   // Hero Auto-Play Showcase state
   const [isHeroPaused, setIsHeroPaused] = useState<boolean>(false);
+
+  // Track window dimensions for perfect 16:9 responsive layout
+  const [windowDimensions, setWindowDimensions] = useState({ 
+    width: typeof window !== 'undefined' ? window.innerWidth : 1200, 
+    height: typeof window !== 'undefined' ? window.innerHeight : 800 
+  });
 
   useEffect(() => {
     if (isHeroPaused) return;
@@ -196,6 +545,10 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
 
   useEffect(() => {
     const handleResize = () => {
+      setWindowDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
       if (window.innerWidth >= 1024) {
         setVisibleCount(3);
       } else if (window.innerWidth >= 640) {
@@ -310,12 +663,52 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
   const videoDurationRef = React.useRef(videoDuration);
   videoDurationRef.current = videoDuration;
 
+  const isBeautyFilmLockedRef = React.useRef(isBeautyFilmLocked);
+  isBeautyFilmLockedRef.current = isBeautyFilmLocked;
+
+  // Sync state and ref helper
+  const setBeautyFilmLocked = (val: boolean) => {
+    isBeautyFilmLockedRef.current = val;
+    setIsBeautyFilmLocked(val);
+  };
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
+    let lastScrollTop = el.scrollTop;
+
     const handleScroll = () => {
-      setIsScrolled(el.scrollTop > 50);
+      const currentScroll = el.scrollTop;
+      setIsScrolled(currentScroll > 50);
+      setScrollTop(currentScroll);
+
+      if (currentScroll > lastScrollTop + 1) {
+        setBeautyFilmPlaying((playing) => {
+          if (playing) return false;
+          return playing;
+        });
+      }
+      lastScrollTop = currentScroll;
+
+      const beautyFilmSec = document.getElementById('beauty-film-section');
+      if (beautyFilmSec && el) {
+        const targetScroll = beautyFilmSec.offsetTop;
+        const currentScroll = el.scrollTop;
+
+        // Auto-calibration: snap progress when far away from the transition zone
+        if (currentScroll < targetScroll - 150) {
+          if (videoScrollProgressRef.current !== 0) {
+            videoScrollProgressRef.current = 0;
+            setVideoScrollProgress(0);
+          }
+        } else if (currentScroll > targetScroll + 150) {
+          if (videoScrollProgressRef.current !== 1) {
+            videoScrollProgressRef.current = 1;
+            setVideoScrollProgress(1);
+          }
+        }
+      }
     };
 
     let touchStartY = 0;
@@ -323,11 +716,51 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
     const handleTouchStart = (e: TouchEvent) => {
       if (e.touches.length > 0) {
         touchStartY = e.touches[0].clientY;
+        beautyFilmTouchStartY.current = e.touches[0].clientY;
       }
     };
 
     // Smooth inertia wheel logic
     const handleWheel = (e: WheelEvent) => {
+      // 1. First, check beauty film section interaction
+      const beautyFilmSec = document.getElementById('beauty-film-section');
+      if (beautyFilmSec && !isScrollLockedRef.current) {
+        const targetScroll = beautyFilmSec.offsetTop;
+        const currentScroll = el.scrollTop;
+        const progress = videoScrollProgressRef.current;
+        const scrollingDown = e.deltaY > 0;
+
+        let shouldLock = isBeautyFilmLockedRef.current;
+        if (!shouldLock) {
+          shouldLock = 
+            (progress === 0 && scrollingDown && currentScroll >= targetScroll - 12) ||
+            (progress === 1 && !scrollingDown && currentScroll <= targetScroll + 12);
+        }
+
+        if (shouldLock) {
+          if (!isBeautyFilmLockedRef.current) {
+            setBeautyFilmLocked(true);
+            el.scrollTop = targetScroll;
+          }
+          if (e.cancelable) {
+            e.preventDefault();
+          }
+
+          // Smoothly change expansion progress
+          const speed = 0.0012; // smooth factor
+          let nextProgress = progress + (scrollingDown ? speed : -speed) * Math.min(Math.abs(e.deltaY), 80);
+          nextProgress = Math.min(Math.max(nextProgress, 0), 1);
+
+          if (nextProgress === 0 || nextProgress === 1) {
+            setBeautyFilmLocked(false);
+          }
+
+          videoScrollProgressRef.current = nextProgress;
+          setVideoScrollProgress(nextProgress);
+          return;
+        }
+      }
+
       const video = videoRef.current;
       if (!video) return;
 
@@ -384,6 +817,49 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
 
     // Smooth inertia touch gesture support
     const handleTouchMove = (e: TouchEvent) => {
+      // 1. First, check beauty film section interaction
+      const beautyFilmSec = document.getElementById('beauty-film-section');
+      if (beautyFilmSec && !isScrollLockedRef.current && e.touches.length > 0) {
+        const targetScroll = beautyFilmSec.offsetTop;
+        const currentScroll = el.scrollTop;
+        const progress = videoScrollProgressRef.current;
+        
+        const currentY = e.touches[0].clientY;
+        const deltaY = beautyFilmTouchStartY.current - currentY;
+        beautyFilmTouchStartY.current = currentY; // Update current touch tracking
+
+        const scrollingDown = deltaY > 0;
+
+        let shouldLock = isBeautyFilmLockedRef.current;
+        if (!shouldLock) {
+          shouldLock = 
+            (progress === 0 && scrollingDown && currentScroll >= targetScroll - 20) ||
+            (progress === 1 && !scrollingDown && currentScroll <= targetScroll + 20);
+        }
+
+        if (shouldLock) {
+          if (!isBeautyFilmLockedRef.current) {
+            setBeautyFilmLocked(true);
+            el.scrollTop = targetScroll;
+          }
+          if (e.cancelable) {
+            e.preventDefault();
+          }
+
+          const speed = 0.0035; // Touch speed factor
+          let nextProgress = progress + (scrollingDown ? speed : -speed) * Math.min(Math.abs(deltaY), 50);
+          nextProgress = Math.min(Math.max(nextProgress, 0), 1);
+
+          if (nextProgress === 0 || nextProgress === 1) {
+            setBeautyFilmLocked(false);
+          }
+
+          videoScrollProgressRef.current = nextProgress;
+          setVideoScrollProgress(nextProgress);
+          return;
+        }
+      }
+
       const video = videoRef.current;
       if (!video) return;
 
@@ -446,6 +922,7 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
 
     let lastMainTitleState = true;
     let lastProductCategoriesState = false;
+    let lastFiftyPercentState = false;
 
     // Helper to update progress HUD directly in the DOM without triggering a React re-render
     const updateProgressHUD = (time: number) => {
@@ -463,6 +940,12 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
       if (nextMainTitleState !== lastMainTitleState) {
         lastMainTitleState = nextMainTitleState;
         setShowMainTitle(nextMainTitleState);
+      }
+
+      const nextFiftyPercentState = pct >= 50 && pct < 60;
+      if (nextFiftyPercentState !== lastFiftyPercentState) {
+        lastFiftyPercentState = nextFiftyPercentState;
+        setShowFiftyPercentMessage(nextFiftyPercentState);
       }
 
       const nextProductCategoriesState = pct >= 90;
@@ -537,38 +1020,39 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
 
     if (Hls.isSupported()) {
       hls = new Hls({
+        autoStartLoad: false,
         enableWorker: true,        // 将 TS 分片 demuxing 解包动作移至 Web Worker 线程
         lowLatencyMode: true,      // 极小延迟缓冲加载
         maxBufferLength: 45,       // 维持足够强劲的前缓冲
         maxMaxBufferLength: 60,
         backBufferLength: 90,      // 核心优化：保留 90 秒的历史回滚缓冲区！
-        appendErrorMaxRetry: 5
+        appendErrorMaxRetry: 5,
+        abrEwmaDefaultEstimate: 50000000, // Force a very high starting bandwidth estimation (50Mbps) for instant HD quality
       });
 
       hls.loadSource(hlsUrl);
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-        // 核心性能与清晰度优化：为了彻底解决背景动画很模糊的问题，同时保证滚动寻帧的完美流畅，
-        // 我们选择 1080p 作为在清晰度和解码性能上的最佳平衡。
-        // 如果没有 1080p，则选择最接近 1080p 的最高分辨率级（如 720p），最高不超过 1080p 以免性能卡顿。
+        // Find the absolute highest quality level dynamically
         let targetIndex = 0;
-        let bestHeight = 0;
-        
+        let maxHeight = 0;
+        let maxBandwidth = 0;
         data.levels.forEach((level, index) => {
-          if (level.height) {
-            if (level.height <= 1080 && level.height > bestHeight) {
-              bestHeight = level.height;
-              targetIndex = index;
-            }
+          if (level.height && level.height > maxHeight) {
+            maxHeight = level.height;
+            targetIndex = index;
+            maxBandwidth = level.bandwidth;
+          } else if (level.height === maxHeight && level.bandwidth > maxBandwidth) {
+            targetIndex = index;
+            maxBandwidth = level.bandwidth;
           }
         });
 
-        if (bestHeight === 0 && data.levels.length > 0) {
-          targetIndex = data.levels.length - 1;
-        }
-
+        hls!.startLevel = targetIndex;
         hls!.currentLevel = targetIndex;
+        hls!.loadLevel = targetIndex;
+        hls!.startLoad();
         
         // 默认显示第一帧，避免纯黑屏
         if (video.currentTime < 0.1) {
@@ -614,6 +1098,7 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
       }
       
       setShowMainTitle(pct < 10);
+      setShowFiftyPercentMessage(pct >= 50 && pct < 60);
       setShowProductCategories(pct >= 90);
 
       if (!videoDuration && videoRef.current.duration) {
@@ -631,12 +1116,14 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
     setIsScrollLocked(false);
     setVideoEnded(true);
     setShowMainTitle(false);
-    setShowProductCategories(false);
+    setShowFiftyPercentMessage(false);
+    setShowProductCategories(true);
     if (videoRef.current) {
       const duration = videoRef.current.duration || videoDuration || 10;
+      const targetTime = Math.max(0.1, duration - 0.1);
       videoRef.current.pause();
-      videoRef.current.currentTime = duration;
-      targetTimeRef.current = duration;
+      videoRef.current.currentTime = targetTime;
+      targetTimeRef.current = targetTime;
       if (progressBarRef.current) {
         progressBarRef.current.style.width = `100%`;
         if (progressTextRef.current) {
@@ -654,10 +1141,42 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
   };
 
   return (
-    <div 
-      ref={containerRef}
-      className={`fixed inset-0 z-[100] bg-gradient-to-b from-[#FAF8F5] via-[#FCFAF7] to-[#F5F2EE] text-[#33312E] ${isScrollLocked ? 'overflow-y-hidden' : 'overflow-y-auto'} font-sans antialiased select-none custom-scrollbar cursor-default`}
-    >
+    <>
+      <AnimatePresence mode="wait">
+        {isPontLoading && (
+          <motion.div
+            key="pont-loader-overlay"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-0 z-[1001]"
+          >
+            <PontLoader onComplete={() => setIsPontLoading(false)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <motion.div 
+        ref={containerRef}
+        initial={{ scale: 1, opacity: 1, x: 0, y: 0, borderRadius: "0px", rotate: 0 }}
+        animate={isExiting ? {
+          scale: typeof window !== 'undefined' && window.innerWidth < 768 ? 0.35 : 0.22,
+          opacity: [1, 0.95, 0],
+          x: typeof window !== 'undefined' && window.innerWidth < 768 ? 0 : "-28vw",
+          y: typeof window !== 'undefined' && window.innerWidth < 768 ? 0 : "8vh",
+          borderRadius: "2.5rem",
+          rotate: typeof window !== 'undefined' && window.innerWidth < 768 ? 0 : -3,
+        } : {
+          scale: 1,
+          opacity: 1,
+          x: 0,
+          y: 0,
+          borderRadius: "0px",
+          rotate: 0,
+        }}
+        transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
+        className={`fixed inset-0 z-[100] bg-gradient-to-b from-[#FAF8F5] via-[#FCFAF7] to-[#F5F2EE] text-[#33312E] ${(isScrollLocked || isBeautyFilmLocked || isPontLoading || isExiting) ? 'overflow-y-hidden' : 'overflow-y-auto'} font-sans antialiased select-none custom-scrollbar cursor-default origin-center shadow-[0_25px_60px_rgba(0,0,0,0.5)]`}
+      >
       {/* Holographic & Premium design keyframes style */}
       <style>{`
         @keyframes scan {
@@ -682,8 +1201,21 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
         }
       `}</style>
       
-      {/* BACKGROUND FLOATING GLOSSY BUBBLES - Styled as Organic Water Droplets */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+      {/* BACKGROUND MULTI-LAYER PARALLAX CLOUD & SCI-FI ENVIRONMENT */}
+      {/* Layer 1: Deepest Atmospheric Layer (Ambient Glowing Orbs) - Moves very slowly */}
+      <div 
+        className="absolute inset-0 pointer-events-none overflow-hidden z-0"
+        style={{ transform: `translateY(${scrollTop * 0.6}px)`, willChange: 'transform' }}
+      >
+        <div className="absolute top-[18%] left-[65%] w-[50vw] h-[50vw] rounded-full bg-[#EAE2D8]/35 blur-[115px] -translate-x-1/2 -translate-y-1/2 organic-glow-orb" />
+        <div className="absolute top-[65%] left-[8%] w-[42vw] h-[42vw] rounded-full bg-[#F3ECE6]/30 blur-[130px] organic-glow-orb" />
+      </div>
+
+      {/* Layer 2: Skincare Droplet Layer (Floating Bubbles) - Moves at medium-slow speed */}
+      <div 
+        className="absolute inset-0 pointer-events-none overflow-hidden z-0"
+        style={{ transform: `translateY(${scrollTop * 0.35}px)`, willChange: 'transform' }}
+      >
         {bubbles.map((bubble) => (
           <motion.div
             key={bubble.id}
@@ -708,9 +1240,45 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
             }}
           />
         ))}
-        {/* Soft atmospheric organic gradient blur lights */}
-        <div className="absolute top-[20%] left-[60%] w-[45vw] h-[45vw] rounded-full bg-[#EAE2D8]/40 blur-[110px] -translate-x-1/2 -translate-y-1/2 organic-glow-orb" />
-        <div className="absolute top-[60%] left-[10%] w-[40vw] h-[40vw] rounded-full bg-[#F3ECE6]/35 blur-[130px] organic-glow-orb" />
+      </div>
+
+      {/* Layer 3: Cosmic Stardust & Coordinate Grid - Moves closer to real scroll speed */}
+      <div 
+        className="absolute inset-0 pointer-events-none overflow-hidden z-0"
+        style={{ transform: `translateY(${scrollTop * 0.15}px)`, willChange: 'transform' }}
+      >
+        {/* Subtle high-tech sci-fi stardust coordinates layout */}
+        <div className="absolute inset-0 opacity-[0.025] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:24px_24px]" />
+        
+        {/* Shimmering space particles matching the aesthetic of picture 2 */}
+        {Array.from({ length: 15 }).map((_, i) => {
+          const x = (i * 27) % 100;
+          const y = (i * 31) % 90 + 5;
+          const size = (i % 3) + 2.5; // size 2.5px to 4.5px
+          return (
+            <motion.div
+              key={`stardust-${i}`}
+              className="absolute rounded-full bg-white/45"
+              style={{
+                left: `${x}%`,
+                top: `${y}%`,
+                width: size,
+                height: size,
+                boxShadow: '0 0 8px rgba(255, 255, 255, 0.7)',
+              }}
+              animate={{
+                opacity: [0.25, 0.9, 0.25],
+                scale: [0.8, 1.3, 0.8],
+              }}
+              transition={{
+                duration: 5 + (i % 4) * 2,
+                repeat: Infinity,
+                delay: i * 0.4,
+                ease: "easeInOut",
+              }}
+            />
+          );
+        })}
       </div>
 
       {/* LUXURY TOP NAVIGATION BAR - Unified Deep Dark Theme to Match Cinematic Art Direction */}
@@ -723,14 +1291,14 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
         {isScrolled ? (
           <div className="flex items-center gap-2">
             <button 
-              onClick={onClose}
+              onClick={handleClose}
               className="flex items-center gap-1.5 text-xs text-white/60 hover:text-white transition-colors mr-4 group uppercase tracking-widest font-mono"
             >
               <motion.span whileHover={{ x: -2 }} className="inline-block">←</motion.span>
               作品集
             </button>
-            <div className="text-xl md:text-2xl font-light tracking-[0.25em] text-white font-sans cursor-pointer flex items-center" onClick={onClose}>
-              P<span className="relative inline-block">O<span className="absolute -top-[1.5px] left-0 right-0 h-[1.5px] bg-white rounded-full" /></span>NT
+            <div className="text-xl md:text-2xl font-light tracking-[0.25em] text-white font-sans cursor-pointer flex items-center" onClick={handleClose}>
+              P<span className="relative inline-block tracking-normal select-none" style={{ marginRight: '0.25em' }}><span className="relative inline-block">O<span className="absolute -top-[1.5px] left-0 right-0 h-[1.5px] bg-white rounded-full" /></span></span>NT
             </div>
           </div>
         ) : (
@@ -744,8 +1312,8 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
 
         {/* Center Logo for cover page (when not scrolled) */}
         {!isScrolled && (
-          <div className="absolute left-1/2 -translate-x-1/2 text-2xl md:text-3xl font-light tracking-[0.25em] text-white font-sans cursor-pointer flex items-center" onClick={onClose}>
-            P<span className="relative inline-block">O<span className="absolute -top-[1.5px] left-0 right-0 h-[1.5px] bg-white rounded-full" /></span>NT
+          <div className="absolute left-1/2 -translate-x-1/2 text-2xl md:text-3xl font-light tracking-[0.25em] text-white font-sans cursor-pointer flex items-center" onClick={handleClose}>
+            P<span className="relative inline-block tracking-normal select-none" style={{ marginRight: '0.25em' }}><span className="relative inline-block">O<span className="absolute -top-[1.5px] left-0 right-0 h-[1.5px] bg-white rounded-full" /></span></span>NT
           </div>
         )}
 
@@ -790,7 +1358,7 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
           </button>
           
           <button 
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2.5 rounded-full transition-all border hover:bg-white/10 text-white/80 hover:text-white border-white/20"
             title="关闭返回"
           >
@@ -929,6 +1497,80 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
                   </motion.div>
                 </div>
               </>
+            )}
+          </AnimatePresence>
+
+          {/* Fifty Percent Video Progress Overlay */}
+          <AnimatePresence>
+            {showFiftyPercentMessage && (
+              <motion.div
+                key="fifty-percent-overlay"
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                variants={{
+                  hidden: { opacity: 0 },
+                  visible: { opacity: 1, transition: { duration: 0.8, staggerChildren: 0.15 } },
+                  exit: { opacity: 0, transition: { duration: 0.6, ease: "easeIn" } }
+                }}
+                className="absolute inset-0 z-30 flex flex-col justify-between p-8 md:p-20 pointer-events-none"
+              >
+                {/* Top spacer */}
+                <div className="h-16" />
+
+                {/* Center Content Block */}
+                <div className="flex flex-col items-center text-center justify-center my-auto">
+                  <motion.p
+                    variants={{
+                      hidden: { opacity: 0, y: 15 },
+                      visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } },
+                      exit: { opacity: 0, y: -10, transition: { duration: 0.4 } }
+                    }}
+                    className="text-xs md:text-sm tracking-[0.4em] font-light text-white/90 uppercase mr-[-0.4em]"
+                  >
+                    氨基酸洁净 × 修护保湿
+                  </motion.p>
+                  
+                  <motion.h2
+                    variants={{
+                      hidden: { opacity: 0, y: 25 },
+                      visible: { opacity: 1, y: 0, transition: { duration: 1.0, delay: 0.15, ease: "easeOut" } },
+                      exit: { opacity: 0, y: -15, transition: { duration: 0.5 } }
+                    }}
+                    className="text-4xl md:text-6xl lg:text-7xl font-serif text-white tracking-[0.2em] leading-normal mt-6 select-none pl-6 mr-[-0.2em]"
+                    style={{ fontFamily: "'Noto Serif SC', 'Playfair Display', Georgia, serif" }}
+                  >
+                    只为肌肤留下 <br />
+                    <span className="block mt-2">纯净与焕亮</span>
+                  </motion.h2>
+                </div>
+
+                {/* Bottom Left Content Block */}
+                <div className="flex flex-col items-start text-left max-w-md pointer-events-auto mt-auto pb-28 md:pb-36">
+                  <motion.div
+                    variants={{
+                      hidden: { opacity: 0, x: -20 },
+                      visible: { opacity: 1, x: 0, transition: { duration: 0.8, delay: 0.3, ease: "easeOut" } },
+                      exit: { opacity: 0, x: -10, transition: { duration: 0.4 } }
+                    }}
+                    className="inline-block px-4 py-1.5 rounded-full border border-white/35 text-[10px] md:text-xs text-white/95 tracking-[0.25em] font-light bg-black/20 backdrop-blur-sm mb-4 uppercase mr-[-0.25em]"
+                  >
+                    焕亮修护
+                  </motion.div>
+
+                  <motion.p
+                    variants={{
+                      hidden: { opacity: 0, y: 15 },
+                      visible: { opacity: 1, y: 0, transition: { duration: 0.8, delay: 0.4, ease: "easeOut" } },
+                      exit: { opacity: 0, y: -5, transition: { duration: 0.4 } }
+                    }}
+                    className="text-[11px] md:text-xs text-white/80 font-light tracking-[0.2em] leading-relaxed"
+                  >
+                    PÖNT 以温和洁净与修护保湿配方，<br />
+                    唤醒肌肤细腻光泽。
+                  </motion.p>
+                </div>
+              </motion.div>
             )}
           </AnimatePresence>
 
@@ -1227,253 +1869,665 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
           </div>
 
         </section>
+      </div> {/* Close the first max-w-7xl container wrapper */}
+
+      {/* ========================================== */}
+      {/* INTERACTIVE BEAUTY FILM VIDEO EXPANSION SECTION */}
+      {/* ========================================== */}
+      <section 
+        id="beauty-film-section" 
+        ref={beautyFilmSectionRef}
+        className="relative w-full h-[75vh] min-h-[500px] md:h-[85vh] md:max-h-[720px] md:min-h-[580px] bg-transparent overflow-hidden md:max-w-[97vw] md:mx-auto flex flex-col items-center justify-center my-12 md:my-20"
+      >
+        {/* Dynamic 16:9 Black Box Background Container */}
+        {(() => {
+          const targetMaxW = windowDimensions.width < 768 ? (windowDimensions.width - 32) : Math.min(windowDimensions.width - 120, 1120);
+          const targetMaxH = targetMaxW * 9 / 16;
+          const initW = windowDimensions.width < 768 ? 200 : 340;
+          const initH = windowDimensions.width < 768 ? 150 : 480;
+          const videoW = initW + videoScrollProgress * (targetMaxW - initW);
+          const videoH = initH + videoScrollProgress * (targetMaxH - initH);
+
+          return (
+            <>
+              <div 
+                className="absolute bg-stone-950 shadow-2xl overflow-hidden transition-all duration-200 pointer-events-none"
+                style={{
+                  width: `${targetMaxW}px`,
+                  height: `${targetMaxH}px`,
+                  borderRadius: windowDimensions.width < 768 ? '24px' : '32px',
+                  left: '50%',
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: 5
+                }}
+              >
+                {/* Parallax Dreamlike Background Image (Sunset over Water with Lotus) - Fixed 16:9 size to prevent scaling/stretching */}
+                <div 
+                  className="absolute inset-0 z-0 pointer-events-none overflow-hidden"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                  }}
+                >
+                  <img 
+                    src="https://i.postimg.cc/7ZTvmgMn/Chat-GPT-Image-2026nian7yue10ri-11-25-58.png"
+                    alt="Dreamlike Background"
+                    className="w-full h-full object-cover object-center filter brightness-95 saturate-[1.1]"
+                    referrerPolicy="no-referrer"
+                    style={{
+                      transform: `translateY(${(videoScrollProgress - 0.5) * 40}px)`,
+                      opacity: 1 - videoScrollProgress * 0.9,
+                      transition: 'opacity 0.2s ease-out'
+                    }}
+                  />
+                  {/* Ambient Water Reflection Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-950/20 to-stone-950/60" />
+                  <div className="absolute inset-0 bg-[#3d271e]/15 mix-blend-color-burn" />
+
+                  {/* Glowing Sunset Sunray Light leak */}
+                  <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full bg-orange-400/10 blur-[120px] pointer-events-none" />
+                </div>
+
+                {/* Glowing Translucent Bubble/Sparkle Layer - Locked to section bounds */}
+                <div 
+                  className="absolute inset-0 z-10 pointer-events-none overflow-hidden"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                  }}
+                >
+                  {[...Array(6)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="absolute rounded-full border border-white/20 bg-white/5 backdrop-blur-[1px] shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)] animate-pulse"
+                      style={{
+                        width: `${25 + i * 15}px`,
+                        height: `${25 + i * 15}px`,
+                        bottom: `${10 + i * 15}%`,
+                        left: `${15 + (i * 13) % 70}%`,
+                        animationDelay: `${i * 1.2}s`,
+                        animationDuration: `${4 + i * 2}s`,
+                        opacity: (1 - videoScrollProgress * 1.3) * 0.4
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Top Brand Header (Picture 2 style) */}
+              <div 
+                className="absolute z-30 flex justify-between items-center pointer-events-none transition-all duration-300"
+                style={{ 
+                  opacity: Math.max(0, 1 - videoScrollProgress * 1.8),
+                  width: `${targetMaxW - 64}px`,
+                  left: '50%',
+                  top: `calc(50% - ${targetMaxH / 2}px + 32px)`,
+                  transform: 'translateX(-50%)'
+                }}
+              >
+                {/* PŌNT Brand Logo */}
+                <div className="flex items-center">
+                  <span className="text-xl md:text-2xl font-light tracking-[0.25em] text-[#FCFAF7] font-sans">
+                    P<span className="relative inline-block tracking-normal select-none" style={{ marginRight: '0.25em' }}><span className="relative inline-block">O<span className="absolute -top-[1px] left-0 right-0 h-[1.5px] bg-white rounded-full" /></span></span>NT
+                  </span>
+                </div>
+                {/* Beauty Film Tag / Dropdown Selector */}
+                <div>
+                  <div className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-white/20 bg-white/10 backdrop-blur-md text-[10px] font-semibold tracking-wider text-[#FCFAF7]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    BEAUTY FILM
+                    <span className="text-[8px] opacity-75">▼</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Slideway Headings Group */}
+              <div 
+                className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none"
+                style={{ zIndex: 25 }}
+              >
+                <div 
+                  className="text-center space-y-2 md:space-y-4 px-4"
+                  style={{
+                    transform: `translateY(${(videoScrollProgress - 0.5) * -50}px)`
+                  }}
+                >
+                  {/* "Immersive" heading sliding left */}
+                  <h2 
+                    className="text-4xl md:text-6xl lg:text-8xl font-serif font-light text-[#FCFAF7] tracking-wider filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] transition-transform duration-75 ease-out uppercase"
+                    style={{
+                      transform: `translateX(-${videoScrollProgress * 16}vw)`,
+                      opacity: Math.max(0, 1 - videoScrollProgress * 1.8)
+                    }}
+                  >
+                    Immersive
+                  </h2>
+                  {/* "Beauty Experience" heading sliding right */}
+                  <h2 
+                    className="text-4xl md:text-6xl lg:text-8xl font-serif font-light text-[#FCFAF7] tracking-wider filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] transition-transform duration-75 ease-out uppercase"
+                    style={{
+                      transform: `translateX(${videoScrollProgress * 16}vw)`,
+                      opacity: Math.max(0, 1 - videoScrollProgress * 1.8)
+                    }}
+                  >
+                    Beauty Experience
+                  </h2>
+                </div>
+              </div>
+
+              {/* Dynamic Expanding Central Card */}
+              <div 
+                ref={mediaCardRef}
+                onMouseEnter={() => setIsHoveringMedia(true)}
+                onMouseLeave={() => setIsHoveringMedia(false)}
+                onClick={(e) => {
+                  if (videoScrollProgress >= 0.8) {
+                    handleTogglePlayBeautyFilm(e);
+                  } else {
+                    handleToggleMuteBeautyFilm(e);
+                  }
+                }}
+                className={`group/mediacard relative flex items-center justify-center overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-stone-900 border border-white/10 transition-all duration-200 ${
+                  isFullscreen 
+                    ? (isFullscreenActive ? 'cursor-default' : '!cursor-none') 
+                    : 'cursor-pointer'
+                }`}
+                style={{
+                  width: `${videoW}px`,
+                  height: `${videoH}px`,
+                  maxWidth: '100%',
+                  maxHeight: '100vh',
+                  borderRadius: isFullscreen ? '0px' : `${32 - videoScrollProgress * 8}px`,
+                  zIndex: videoScrollProgress > 0.8 ? 20 : 15
+                }}
+              >
+                {/* The Actual Skincare Water Splash Video (HLS Mux Stream) */}
+                <video
+                  ref={beautyFilmRef}
+                  autoPlay
+                  muted={beautyFilmMuted}
+                  loop
+                  playsInline
+                  preload="auto"
+                  className="w-full h-full object-cover pointer-events-none"
+                  style={{
+                    scale: 1 + (1 - videoScrollProgress) * 0.12
+              }}
+            />
+
+            {/* Bubble Mask Overlay inside Card */}
+            <div 
+              className="absolute inset-0 pointer-events-none transition-opacity duration-500"
+              style={{
+                background: 'radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.4) 100%)',
+                opacity: 1 - videoScrollProgress
+              }}
+            />
+
+            {/* Cosmetic Bottle Bubble Sphere Ring Decoration */}
+            <div 
+              className="absolute w-52 h-52 md:w-64 md:h-64 rounded-full border border-white/25 bg-gradient-to-tr from-white/5 to-white/15 backdrop-blur-[0.5px] pointer-events-none transition-all duration-300 shadow-[inset_0_4px_20px_rgba(255,255,255,0.25)] flex items-center justify-center"
+              style={{
+                opacity: Math.max(0, 1 - videoScrollProgress * 1.5),
+                transform: `scale(${1 - videoScrollProgress * 0.2})`
+              }}
+            >
+              {/* Inner bubble glow */}
+              <div className="absolute inset-1 rounded-full border border-dashed border-white/15 animate-spin-slow" />
+            </div>
+
+            {/* Pulsing Translucent Play/Volume Button in Central Card */}
+            {videoScrollProgress < 0.8 ? (
+              <div 
+                className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none transition-opacity duration-300"
+                style={{ opacity: Math.max(0, 1 - videoScrollProgress * 1.3) }}
+              >
+                <div 
+                  className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/15 border border-white/30 backdrop-blur-xl flex items-center justify-center text-white cursor-pointer shadow-2xl group-hover/mediacard:scale-110 active:scale-95 transition-all duration-300"
+                >
+                  {beautyFilmMuted ? (
+                    /* Mute state shows custom Play icon + UNMUTE text */
+                    <div className="flex flex-col items-center justify-center translate-y-0.5">
+                      <svg className="w-6 h-6 md:w-7 md:h-7 fill-white translate-x-0.5" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                      <span className="text-[8px] uppercase tracking-wider font-semibold text-white/80 mt-1 scale-90">UNMUTE</span>
+                    </div>
+                  ) : (
+                    /* Active sound speaker */
+                    <div className="flex flex-col items-center justify-center">
+                      <svg className="w-6 h-6 md:w-7 md:h-7 fill-none stroke-white stroke-2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                      </svg>
+                      <span className="text-[8px] uppercase tracking-wider font-semibold text-white/80 mt-1 scale-90">SOUND ON</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* When expanded and paused, show a large, gorgeous play button overlay */
+              !beautyFilmPlaying && (
+                <div 
+                  className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none transition-opacity duration-300 bg-black/45 backdrop-blur-[2px]"
+                >
+                  <div 
+                    onClick={(e) => { e.stopPropagation(); handleTogglePlayBeautyFilm(e); }}
+                    className="flex flex-col items-center justify-center gap-4 cursor-pointer pointer-events-auto group/playbtn"
+                  >
+                    {/* Glassmorphic Play Circle Container */}
+                    <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#1A1A1A]/70 hover:bg-[#B44A32]/70 border border-white/20 hover:border-[#B44A32]/40 backdrop-blur-md flex items-center justify-center text-white shadow-[0_12px_40px_rgba(0,0,0,0.6)] group-hover/playbtn:scale-110 active:scale-95 transition-all duration-300 relative">
+                      {/* Interactive ring element */}
+                      <div className="absolute inset-[-4px] rounded-full border border-white/5 group-hover/playbtn:border-[#B44A32]/30 group-hover/playbtn:scale-105 transition-all duration-300" />
+                      
+                      {/* Play Icon perfectly centered visually */}
+                      <Play className="w-6 h-6 md:w-8 md:h-8 fill-white stroke-none pl-1 transition-transform duration-300 group-hover/playbtn:scale-105" />
+                    </div>
+
+                    {/* Luxurious, perfectly aligned label below */}
+                    <span className="text-[10px] md:text-xs font-sans tracking-[0.35em] text-[#FCFAF7]/90 font-medium uppercase drop-shadow-md select-none group-hover/playbtn:text-white transition-colors duration-300">
+                      CLICK TO PLAY
+                    </span>
+                  </div>
+                </div>
+              )
+            )}
+
+            {/* Immersive HUD volume level status overlay at bottom */}
+            {videoScrollProgress > 0.8 && beautyFilmPlaying && (
+              <div 
+                className={`absolute left-6 md:left-10 z-30 flex items-center gap-3 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 pointer-events-none transition-all duration-500 ${
+                  (isFullscreen ? isFullscreenActive : isHoveringMedia)
+                    ? 'bottom-24 opacity-100 translate-y-0'
+                    : 'bottom-6 opacity-0 translate-y-10'
+                }`}
+              >
+                <span className="text-[10px] font-mono font-bold tracking-widest text-[#B44A32] animate-pulse">SOUND SYSTEM ACTIVE</span>
+                <div className="flex items-center gap-1">
+                  {[...Array(4)].map((_, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`w-[2.5px] rounded-full bg-white transition-all duration-300`} 
+                      style={{ 
+                        height: !beautyFilmMuted ? `${6 + idx * 4 + Math.sin(Date.now() / 150 + idx) * 4}px` : '3px'
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Custom Interactive Glassmorphic Media Player Controls */}
+            {videoScrollProgress >= 0.8 && (
+              <div 
+                onClick={(e) => e.stopPropagation()} 
+                className={`absolute left-4 right-4 sm:left-6 sm:right-6 p-4 sm:p-6 bg-black/40 border border-white/10 backdrop-blur-3xl z-40 flex flex-col gap-4 rounded-2xl sm:rounded-3xl transition-all duration-500 select-none shadow-[0_24px_50px_rgba(0,0,0,0.7)] ${
+                  (isFullscreen ? isFullscreenActive : isHoveringMedia)
+                    ? 'bottom-4 sm:bottom-6 opacity-100 translate-y-0 scale-100 pointer-events-auto' 
+                    : 'bottom-0 opacity-0 translate-y-16 scale-95 pointer-events-none'
+                }`}
+              >
+                <style dangerouslySetInnerHTML={{__html: `
+                  .custom-media-slider {
+                    -webkit-appearance: none;
+                    appearance: none;
+                    outline: none;
+                  }
+                  .custom-media-slider::-webkit-slider-thumb {
+                    -webkit-appearance: none;
+                    appearance: none;
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 50%;
+                    background: #ffffff;
+                    cursor: pointer;
+                    box-shadow: 0 0 10px rgba(255,255,255,0.9);
+                    transition: transform 0.15s ease-in-out;
+                  }
+                  .custom-media-slider::-moz-range-thumb {
+                    width: 8px;
+                    height: 8px;
+                    border: none;
+                    border-radius: 50%;
+                    background: #ffffff;
+                    cursor: pointer;
+                    box-shadow: 0 0 10px rgba(255,255,255,0.9);
+                    transition: transform 0.15s ease-in-out;
+                  }
+                  .custom-media-slider:hover::-webkit-slider-thumb {
+                    transform: scale(1.6);
+                  }
+                  .custom-media-slider:hover::-moz-range-thumb {
+                    transform: scale(1.6);
+                  }
+                `}} />
+
+                {/* Row 1: Progress Bar & Time Display (matching picture top-level layout) */}
+                <div className="flex items-center gap-4 w-full">
+                  {/* Left Time Stamp */}
+                  <span className="text-[11px] sm:text-xs font-sans font-medium text-white/90 select-none whitespace-nowrap min-w-[32px]">
+                    {formatTime(beautyFilmCurrentTime)}
+                  </span>
+
+                  {/* Elegant Thin Timeline Input Slider */}
+                  <input
+                    type="range"
+                    min="0"
+                    max={beautyFilmDuration || 100}
+                    value={beautyFilmCurrentTime}
+                    onChange={(e) => {
+                      const newTime = parseFloat(e.target.value);
+                      const video = beautyFilmRef.current;
+                      if (video) {
+                        video.currentTime = newTime;
+                        setBeautyFilmCurrentTime(newTime);
+                      }
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="custom-media-slider flex-1 h-[3px] rounded-lg cursor-pointer bg-white/20 hover:bg-white/30 transition-all duration-150 outline-none"
+                    style={{
+                      background: `linear-gradient(to right, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.95) ${beautyFilmDuration ? (beautyFilmCurrentTime / beautyFilmDuration) * 100 : 0}%, rgba(255, 255, 255, 0.15) ${beautyFilmDuration ? (beautyFilmCurrentTime / beautyFilmDuration) * 100 : 0}%, rgba(255, 255, 255, 0.15) 100%)`
+                    }}
+                  />
+                  
+                  {/* Right Time Stamp */}
+                  <span className="text-[11px] sm:text-xs font-sans font-medium text-white/90 select-none whitespace-nowrap min-w-[32px] text-right">
+                    {formatTime(beautyFilmDuration)}
+                  </span>
+                </div>
+
+                {/* Row 2: Play/Pause, Volume, and Speed Selector Buttons */}
+                <div className="flex items-center justify-between w-full">
+                  {/* Left Controls (Play and Volume) */}
+                  <div className="flex items-center gap-6">
+                    {/* Play/Pause Button */}
+                    <button
+                      onClick={(e) => handleTogglePlayBeautyFilm(e)}
+                      className="text-white hover:scale-110 active:scale-95 transition-all p-1 outline-none"
+                      title={beautyFilmPlaying ? "Pause" : "Play"}
+                    >
+                      {beautyFilmPlaying ? (
+                        /* Simple stroke-only pause icon */
+                        <svg className="w-5 h-5 fill-none stroke-white stroke-2" viewBox="0 0 24 24">
+                          <line x1="6" y1="4" x2="6" y2="20" strokeLinecap="round" strokeLinejoin="round" />
+                          <line x1="18" y1="4" x2="18" y2="20" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      ) : (
+                        /* Simple stroke-only play icon */
+                        <svg className="w-5 h-5 fill-none stroke-white stroke-2 translate-x-0.5" viewBox="0 0 24 24">
+                          <polygon points="5 3 19 12 5 21 5 3" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </button>
+
+                    {/* Volume Speaker Button & Custom Volume Slider Slider */}
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <button
+                        onClick={(e) => handleToggleMuteBeautyFilm(e)}
+                        className="text-white hover:scale-105 active:scale-95 transition-all p-0.5 outline-none"
+                        title={beautyFilmMuted ? "Unmute" : "Mute"}
+                      >
+                        {beautyFilmMuted ? (
+                          <svg className="w-[18px] h-[18px] fill-none stroke-white/60 stroke-2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6L4.5 9H2.25A.75.75 0 001.5 9.75v4.5c0 .414.336.75.75.75h2.25l2.75 2.25a.75.75 0 001.25-.53V5.53a.75.75 0 00-1.25-.53z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-[18px] h-[18px] fill-none stroke-white stroke-2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                          </svg>
+                        )}
+                      </button>
+
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={beautyFilmMuted ? 0 : beautyFilmVolume}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          setBeautyFilmVolume(val);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="custom-media-slider w-16 sm:w-24 h-[3px] rounded-lg cursor-pointer bg-white/20 transition-all duration-150 outline-none"
+                        style={{
+                          background: `linear-gradient(to right, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.95) ${(beautyFilmMuted ? 0 : beautyFilmVolume) * 100}%, rgba(255, 255, 255, 0.15) ${(beautyFilmMuted ? 0 : beautyFilmVolume) * 100}%, rgba(255, 255, 255, 0.15) 100%)`
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Right Controls (Speed Selector & Fullscreen) */}
+                  <div className="flex items-center gap-4 sm:gap-6">
+                    {/* Playback speed options from 0.5x to 2x (matching picture precisely) */}
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      {[0.5, 1, 1.5, 2].map((speedValue) => {
+                        const isActive = beautyFilmSpeed === speedValue;
+                        return (
+                          <button
+                            key={speedValue}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setBeautyFilmSpeed(speedValue);
+                            }}
+                            className={`text-xs font-sans tracking-wide font-medium select-none transition-all duration-200 outline-none px-2.5 py-1 rounded-lg ${
+                              isActive 
+                                ? 'bg-black/35 border border-white/10 text-white font-semibold shadow-inner' 
+                                : 'text-white/60 hover:text-white/95 cursor-pointer'
+                            }`}
+                          >
+                            {speedValue}x
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Premium Resolution Switcher */}
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowQualityMenu(!showQualityMenu);
+                        }}
+                        className="text-xs font-sans tracking-wide font-medium select-none transition-all duration-200 outline-none px-2.5 py-1 rounded-lg bg-[#B44A32]/10 border border-[#B44A32]/35 text-[#FCD9CF] hover:bg-[#B44A32]/25 hover:text-white cursor-pointer flex items-center gap-1.5"
+                        title="视频清晰度"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        {getQualityName()}
+                      </button>
+
+                      {showQualityMenu && (
+                        <div 
+                          className="absolute bottom-10 right-0 w-36 bg-[#121212]/95 border border-white/10 rounded-xl shadow-2xl p-1.5 z-[100] flex flex-col gap-1 backdrop-blur-lg animate-in fade-in slide-in-from-bottom-2 duration-200"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="text-[10px] text-white/40 font-sans font-semibold tracking-wider uppercase px-2 py-1 select-none">
+                            选择分辨率
+                          </div>
+                          
+                          {/* Force/Fixed options to choose from */}
+                          {beautyFilmLevels.length > 0 ? (
+                            beautyFilmLevels.map((level) => {
+                              const isSelected = beautyFilmQuality === level.index;
+                              let label = `${level.height}p`;
+                              if (level.height >= 1440) label = '2K 极清';
+                              else if (level.height >= 1080) label = '1080P 超清';
+                              else if (level.height >= 720) label = '720P 高清';
+                              
+                              return (
+                                <button
+                                  key={level.index}
+                                  onClick={() => {
+                                    handleChangeBeautyFilmQuality(level.index);
+                                    setShowQualityMenu(false);
+                                  }}
+                                  className={`w-full text-left text-xs font-sans px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-all ${
+                                    isSelected 
+                                      ? 'bg-[#B44A32]/20 text-[#FCD9CF] font-medium' 
+                                      : 'text-white/70 hover:bg-white/5 hover:text-white'
+                                  }`}
+                                >
+                                  <span>{label}</span>
+                                  {isSelected && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                                </button>
+                              );
+                            })
+                          ) : (
+                            // Fallback standard options if Hls levels aren't loaded yet or on native iOS Safari
+                            <>
+                              <button
+                                onClick={() => {
+                                  handleChangeBeautyFilmQuality(-1);
+                                  setShowQualityMenu(false);
+                                }}
+                                className={`w-full text-left text-xs font-sans px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-all ${
+                                  beautyFilmQuality === -1 
+                                    ? 'bg-[#B44A32]/20 text-[#FCD9CF] font-medium' 
+                                    : 'text-white/70 hover:bg-white/5 hover:text-white'
+                                }`}
+                              >
+                                <span>2K 极清 (默认)</span>
+                                {beautyFilmQuality === -1 && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                              </button>
+                            </>
+                          )}
+                          
+                          {beautyFilmLevels.length > 0 && (
+                            <button
+                              onClick={() => {
+                                handleChangeBeautyFilmQuality(-1);
+                                setShowQualityMenu(false);
+                              }}
+                              className={`w-full text-left text-xs font-sans px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-all border-t border-white/5 mt-1 pt-1.5 ${
+                                beautyFilmQuality === -1 
+                                  ? 'bg-[#B44A32]/20 text-[#FCD9CF] font-medium' 
+                                  : 'text-white/70 hover:bg-white/5 hover:text-white'
+                              }`}
+                            >
+                              <span>自动 (自适应)</span>
+                              {beautyFilmQuality === -1 && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Fullscreen Toggle (retained feature with modern icon design) */}
+                    <button
+                      onClick={handleToggleFullscreen}
+                      className="text-white hover:text-[#B44A32] hover:scale-110 active:scale-95 transition-all p-1 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 ml-1"
+                      title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                    >
+                      {isFullscreen ? (
+                        <svg className="w-4 h-4 fill-none stroke-white stroke-2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3 3m12 6V4.5m0 4.5h4.5m-4.5 0l6-6M9 15v4.5M9 15H4.5m4.5 0l-6 6m12-6v4.5m0-4.5h4.5m-4.5 0l6 6" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4 fill-none stroke-white stroke-2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75v4.5m0-4.5h-4.5m4.5 0L15 9m5.25 11.25v-4.5m0 4.5h-4.5m4.5 0L15 15" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Branding & Explorer Footer (Picture 2 style) */}
+          <div 
+            className="absolute z-30 flex justify-between items-end pointer-events-none transition-all duration-300 text-white/80"
+            style={{ 
+              opacity: Math.max(0, 1 - videoScrollProgress * 1.8),
+              width: `${targetMaxW - (windowDimensions.width < 768 ? 48 : 96)}px`,
+              left: '50%',
+              top: `calc(50% + ${targetMaxH / 2}px - ${windowDimensions.width < 768 ? 24 : 32}px)`,
+              transform: 'translate(-50%, -100%)'
+            }}
+          >
+            {/* PŌNT COSMETICS label */}
+            <div className="space-y-0.5">
+              <span className="block text-[10px] font-bold tracking-[0.2em] text-[#B44A32] uppercase">PŌNT ATELIER</span>
+              <span className="block text-xs font-light tracking-[0.1em] text-white/80">PREMIUM BEAUTY SHIFT</span>
+            </div>
+            
+            {/* Scroll to Explore with chevron indicator */}
+            <div className="flex flex-col items-center gap-1.5">
+              <span className="text-[9px] font-mono tracking-[0.25em] text-white/60 animate-pulse uppercase">SCROLL TO EXPAND</span>
+              <div className="w-7 h-7 rounded-full border border-white/10 bg-white/5 flex items-center justify-center animate-bounce">
+                <svg className="w-3.5 h-3.5 stroke-white stroke-2" fill="none" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+              </div>
+            </div>
+          </div>
+            </>
+          );
+        })()}
+      </section>
+
+        {/* Re-open the max-w-7xl container wrapper for the remaining sections */}
+        <div className="max-w-7xl mx-auto px-6 md:px-12 py-12 md:py-16 space-y-24 md:space-y-36 w-full">
 
         {/* ========================================== */}
-        {/* SUB-SECTION 06: SCIENTIFIC FORMULA        */}
+        {/* SUB-SECTION 01: PACKAGING DESIGN          */}
         {/* ========================================== */}
         <section id="formula-highlights-section" className="space-y-12 py-8 relative overflow-hidden">
-          {/* Section Indicator on top-left, matching the 06 tag style */}
+          {/* Section Indicator on top-left, matching the 01 tag style */}
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-[#FAF7F3] text-[#B44A32] flex items-center justify-center text-xs font-black border border-[#E5DFD7] shadow-sm">
-              06
+              01
             </div>
             <div className="h-[1px] flex-1 bg-gradient-to-r from-[#E5DFD7] to-transparent" />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            
-            {/* Left intro text & descriptions */}
-            <div className="lg:col-span-4 space-y-6">
-              <span className="text-[11px] text-[#B44A32] uppercase tracking-[0.2em] font-bold block">核心配方成分</span>
+          <div className="space-y-8">
+            <div className="text-center space-y-2">
+              <span className="text-[11px] text-[#B44A32] uppercase tracking-[0.2em] font-bold block">PACKAGING DESIGN</span>
               <h2 className="text-3xl md:text-4xl font-light text-stone-900 leading-tight">
-                科学精密复配 <br />
-                <span className="font-sans italic font-normal text-[#B44A32]">灌注活性机能</span>
+                包装设计 <span className="font-sans italic font-normal text-[#B44A32]">极简至美</span>
               </h2>
-              <p className="text-stone-500 text-xs md:text-sm leading-relaxed font-light">
-                甄选多重高纯度天然植萃与现代生物医药科技活性。通过极简复配公式，在协同增效的同时给予面部温和屏障重构，让娇嫩肌重获莹润弹滑。
-              </p>
-              
-              {/* Highlight statistics metrics */}
-              <div className="pt-4 border-t border-[#EBE6DF] grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <span className="block text-2xl font-serif text-[#B44A32]">99.6%</span>
-                  <span className="block text-[10px] text-stone-400">生物源生态纯净度</span>
-                </div>
-                <div className="space-y-1">
-                  <span className="block text-2xl font-serif text-[#B44A32]">24H</span>
-                  <span className="block text-[10px] text-stone-400">深层密集立体渗透</span>
-                </div>
-              </div>
             </div>
 
-            {/* Middle Column: Interactive Botanical Science Dial Wheel */}
-            <div className="lg:col-span-4 flex items-center justify-center py-6">
-              <div className="relative w-full aspect-square max-w-[340px] md:max-w-[360px] rounded-full border border-stone-200/40 bg-stone-100/10 flex items-center justify-center p-4">
-                {/* Rotating accent circle background */}
-                <div className="absolute inset-2 rounded-full border border-dashed border-[#E5DFD7] opacity-60 animate-spin-slow" />
-                
-                {/* Connection lines from center to satellite nodes */}
-                <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" viewBox="0 0 100 100">
-                  {[
-                    { title: '山茶花', label: 'Camellia' },
-                    { title: '玻尿酸', label: 'Hyaluronic' },
-                    { title: '胜肽', label: 'Peptides' },
-                    { title: '甘草根', label: 'Licorice' },
-                    { title: '积雪草', label: 'Centella' }
-                  ].map((_, idx) => {
-                    const angle = (idx * 2 * Math.PI) / 5 - Math.PI / 2;
-                    const x2 = 50 + 38 * Math.cos(angle);
-                    const y2 = 50 + 38 * Math.sin(angle);
-                    const isActive = activeIngredientIndex === idx;
-                    return (
-                      <line
-                        key={idx}
-                        x1="50"
-                        y1="50"
-                        x2={x2}
-                        y2={y2}
-                        stroke={isActive ? '#B44A32' : '#E5DFD7'}
-                        strokeWidth={isActive ? '1.5' : '1'}
-                        strokeDasharray={isActive ? 'none' : '2, 3'}
-                        className="transition-all duration-500"
-                      />
-                    );
-                  })}
-                </svg>
-
-                {/* Central Nucleus Capsule Showcase */}
-                <div className="relative w-36 h-36 rounded-full bg-white border border-[#E5DFD7] shadow-[0_12px_35px_rgba(180,140,110,0.08)] flex flex-col items-center justify-center p-3 text-center z-10">
-                  <div className="w-10 h-10 rounded-full bg-[#FAF7F3] border border-[#E5DFD7] text-[#B44A32] flex items-center justify-center shadow-inner mb-1.5 animate-pulse">
-                    {[
-                      <Leaf className="w-5 h-5" key="camellia" />,
-                      <Droplet className="w-5 h-5" key="hyaluronic" />,
-                      <Sparkles className="w-5 h-5" key="peptides" />,
-                      <Sparkle className="w-5 h-5" key="licorice" />,
-                      <Shield className="w-5 h-5" key="centella" />
-                    ][activeIngredientIndex]}
-                  </div>
-                  <span className="block text-[10px] font-bold text-[#B44A32] tracking-widest uppercase">
-                    {[
-                      'Camellia', 'Hyaluronic', 'Peptides', 'Licorice', 'Centella'
-                    ][activeIngredientIndex]}
-                  </span>
-                  <span className="block text-[12px] text-stone-800 font-semibold mt-0.5">
-                    {[
-                      '山茶花精萃', '玻尿酸复合', '弹润六胜肽', '甘草根萃取', '积雪草修护'
-                    ][activeIngredientIndex]}
-                  </span>
-                </div>
-
-                {/* Outer interactive satellite nodes */}
-                {[
-                  { title: '山茶花', label: 'Camellia' },
-                  { title: '玻尿酸', label: 'Hyaluronic' },
-                  { title: '胜肽', label: 'Peptides' },
-                  { title: '甘草根', label: 'Licorice' },
-                  { title: '积雪草', label: 'Centella' }
-                ].map((item, idx) => {
-                  const angle = (idx * 2 * Math.PI) / 5 - Math.PI / 2; // Align 0 at top center
-                  const x = 50 + 38 * Math.cos(angle); // percentage from center
-                  const y = 50 + 38 * Math.sin(angle); // percentage from center
-                  const isActive = activeIngredientIndex === idx;
-
-                  return (
-                    <div
-                      key={idx}
-                      className="absolute -translate-x-1/2 -translate-y-1/2 z-20"
-                      style={{ left: `${x}%`, top: `${y}%` }}
-                    >
-                      {/* Interactive satellite button */}
-                      <button
-                        onClick={() => setActiveIngredientIndex(idx)}
-                        onMouseEnter={() => setActiveIngredientIndex(idx)}
-                        className={`group/node flex flex-col items-center justify-center p-1.5 focus:outline-none`}
-                      >
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-500 ${
-                          isActive 
-                            ? 'bg-[#B44A32] border-[#B44A32] text-white scale-110 shadow-[0_4px_12px_rgba(180,74,50,0.25)]' 
-                            : 'bg-white border-[#E5DFD7] text-stone-600 hover:border-stone-400 hover:scale-105 shadow-sm'
-                        }`}>
-                          <span className="text-[10px] font-bold">{idx + 1}</span>
-                        </div>
-                        <span className={`block text-[9px] mt-1 font-medium px-1.5 py-0.5 rounded-md transition-all duration-500 ${
-                          isActive 
-                            ? 'bg-[#FAF2EE] text-[#B44A32] font-semibold' 
-                            : 'bg-transparent text-stone-500 group-hover/node:text-stone-800'
-                        }`}>
-                          {item.title}
-                        </span>
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Right Column: Lab Detail Display Card */}
-            <div className="lg:col-span-4">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeIngredientIndex}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.4 }}
-                  className="bg-white/95 backdrop-blur-md p-7 rounded-3xl border border-[#EBE6DF] shadow-[0_8px_30px_rgba(180,140,110,0.02)] space-y-6"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className="text-[9px] font-mono font-bold text-stone-400 tracking-[0.2em] block uppercase">
-                        {[
-                          'CAMELLIA EXTRACT',
-                          'HYALURONIC COMPLEX',
-                          'ACTIVE PEPTIDES',
-                          'LICORICE ROOT',
-                          'CENTELLA EXTRACT'
-                        ][activeIngredientIndex]}
-                      </span>
-                      <h3 className="text-xl font-bold text-stone-900 mt-0.5">
-                        {[
-                          '山茶花抗氧精萃',
-                          '立体玻尿酸复合物',
-                          '胶原弹润六胜肽',
-                          '高活甘草根提取物',
-                          '积雪草密集修护因子'
-                        ][activeIngredientIndex]}
-                      </h3>
-                    </div>
-                    <span className="bg-[#FAF2EE] text-[#B44A32] text-[10px] font-bold px-2.5 py-1 rounded-full border border-[#FAF2EE]">
-                      {[
-                        '抗氧度 +94%',
-                        '锁水度 +120%',
-                        '紧致感 +88%',
-                        '匀净度 +82%',
-                        '自愈力 +96%'
-                      ][activeIngredientIndex]}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-stone-500 leading-relaxed font-light">
-                    {[
-                      '甄选高品质天然红山茶花活能成分，富含抗氧化茶多酚与维生素，高效舒缓镇静，改善受损泛红，深层锁水保湿，让受损表皮屏障重获柔嫩光泽。',
-                      '复配多种不同分子量的透明质酸钠，构建立体保水网。大分子地表锁水防干燥，小分子穿透真皮层注入丰沛水活能量，使干瘪粗糙肌肤瞬时充盈。',
-                      '精心复配活性六胜肽与肌肽成分，直击胶原流失。激发深层纤维自愈与弹性胶原合成，显著抚平干纹、动态细纹，由内而外提拉紧实下垂面部轮廓。',
-                      '含有高活性的光甘草定，被称为「美白黄金」，强效抑制酪氨酸酶活性，阻断黑色素沉积，舒缓微炎症，令肌肤呈现清透匀净的自然通透质感。',
-                      '富含高纯度积雪草苷，是敏感肌的「自愈源泉」。高效促进表皮细胞新生与纤维连接，提供卓越的换季脱皮与红血丝密集修护，加速屏障愈合。'
-                    ][activeIngredientIndex]}
-                  </p>
-
-                  <div className="pt-4 border-t border-[#EBE6DF] space-y-3">
-                    <div className="flex items-start gap-2.5">
-                      <div className="w-5 h-5 rounded-full bg-[#FAF7F3] border border-[#E5DFD7] text-[#B44A32] flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <Sparkles size={11} />
-                      </div>
-                      <div className="space-y-0.5">
-                        <span className="block text-[10px] font-bold text-stone-800">核心功效机制</span>
-                        <span className="block text-[11px] text-stone-500 font-light">
-                          {[
-                            '舒缓发红，增强面部表皮屏障锁水能力，抵御外界氧化侵害。',
-                            '立体补水保水，改善肌肤粗糙缺水，即刻润泽丰盈细胞。',
-                            '平滑动态细纹与干纹，激发自身胶原合成，紧实下垂轮廓。',
-                            '淡化色沉与黄气，改善面部暗沉不均，焕发通透净润。',
-                            '改善泛红敏弱，加速脱皮受损修护，强效恢复自愈活力。'
-                          ][activeIngredientIndex]}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-2.5">
-                      <div className="w-5 h-5 rounded-full bg-[#FAF7F3] border border-[#E5DFD7] text-[#B44A32] flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <Leaf size={11} />
-                      </div>
-                      <div className="space-y-0.5">
-                        <span className="block text-[10px] font-bold text-stone-800">尖端绿色萃取工艺</span>
-                        <span className="block text-[11px] text-stone-500 font-light">
-                          {[
-                            '超声低温真空活性提取，百分百保留花瓣原始活性与营养分子。',
-                            '高分子立体交联科技，形成纳米层级高透气保水隐形微膜。',
-                            '高渗透活性脂质体包裹技术，直达基底层，释放多肽高活性能量。',
-                            '专利物理吸附脱色，极高纯度富集光甘草定天然活性单体。',
-                            '天然离心溶剂萃取，有效去除杂质，保留高纯度活性积雪草苷。'
-                          ][activeIngredientIndex]}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
+            <FocusRail 
+              items={DEMO_ITEMS} 
+              autoPlay={false} 
+              loop={true} 
+            />
           </div>
         </section>
 
         {/* ========================================== */}
-        {/* SUB-SECTION 07: SKINCARE ROUTINE          */}
+        {/* SUB-SECTION 02: MERCHANDISE DESIGN        */}
+        {/* ========================================== */}
+        <section id="merchandise-design-section" className="space-y-12 py-8 relative overflow-hidden">
+          {/* Section Indicator on top-left, matching the 02 tag style */}
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-[#FAF7F3] text-[#B44A32] flex items-center justify-center text-xs font-black border border-[#E5DFD7] shadow-sm">
+              02
+            </div>
+            <div className="h-[1px] flex-1 bg-gradient-to-r from-[#E5DFD7] to-transparent" />
+          </div>
+
+          <div className="space-y-8">
+            <div className="text-center space-y-2">
+              <span className="text-[11px] text-[#B44A32] uppercase tracking-[0.2em] font-bold block">MERCHANDISE DESIGN</span>
+              <h2 className="text-3xl md:text-4xl font-light text-stone-900 leading-tight">
+                周边设计 <span className="font-sans italic font-normal text-[#B44A32]">美学延展</span>
+              </h2>
+            </div>
+
+            <ImageAutoSlider />
+          </div>
+        </section>
+
+        {/* ========================================== */}
+        {/* SUB-SECTION 03: SKINCARE ROUTINE          */}
         {/* ========================================== */}
         <section id="daily-ritual-steps-section" className="space-y-10 py-6">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-[#FAF7F3] text-[#B44A32] flex items-center justify-center text-xs font-black border border-[#E5DFD7] shadow-sm">
-              07
+              03
             </div>
             <div className="h-[1px] flex-1 bg-gradient-to-r from-[#E5DFD7] to-transparent" />
           </div>
@@ -1619,274 +2673,6 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
                 )}
               </div>
             ))}
-          </div>
-        </section>
-
-        {/* ========================================== */}
-        {/* SUB-SECTION 08: REAL FEEDBACK TESTIMONIALS */}
-        {/* ========================================== */}
-        <section id="feedback-testimonials-section" className="space-y-10 py-6">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-[#FFF2EE] text-[#E86D51] flex items-center justify-center text-xs font-black border border-[#F4E2DC] shadow-sm">
-              08
-            </div>
-            <div className="h-[1px] flex-1 bg-gradient-to-r from-[#F4E2DC] to-transparent" />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            {/* Left Side: Stats Block */}
-            <div className="lg:col-span-4 space-y-6">
-              <div className="space-y-3">
-                <span className="text-[11px] text-[#E86D51] uppercase tracking-[0.2em] font-bold block">真实反馈</span>
-                <h2 className="text-3xl font-light text-slate-900 leading-tight">
-                  看得见的改善， <br />
-                  <span className="font-sans italic font-normal text-[#E86D51]">来自持续护理</span>
-                </h2>
-                <p className="text-slate-500 text-xs md:text-sm leading-relaxed font-light">
-                  以科学温和的配方为基石，全方位修护角质层，让肌肤在每一次呼吸间呈现更透亮、水嫩、细腻与弹润的完美姿态。
-                </p>
-              </div>
-
-              {/* Little custom progress list */}
-              <div className="space-y-4">
-                {[
-                  { percent: '92%', label: '使用者证实肌肤水润度获得显著提升' },
-                  { percent: '89%', label: '使用者证实肌肤毛孔与角质更加细腻' },
-                  { percent: '85%', label: '使用者证实面部轮廓丰盈紧实且富有弹性' }
-                ].map((stat, idx) => (
-                  <div key={idx} className="space-y-1.5">
-                    <div className="flex justify-between items-end">
-                      <span className="text-xs font-bold text-slate-700">{stat.label}</span>
-                      <span className="text-base font-black text-[#E86D51]">{stat.percent}</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        whileInView={{ width: stat.percent }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 1.5, ease: "easeOut" }}
-                        className="h-full bg-gradient-to-r from-[#FBC7B9] to-[#E86D51] rounded-full"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                onClick={() => scrollToSection('results-section', 'RESULTS')}
-                className="group inline-flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-[#E86D51] hover:text-[#c4533a] transition-colors pt-2"
-              >
-                查看更多临床测试报告
-                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
-
-            {/* Right Side: Two speech-bubbles testimonials & Graphic Element */}
-            <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6 relative">
-              {/* Artistic blurred water/cell sphere graphic behind */}
-              <div className="absolute right-0 bottom-[-20%] w-[240px] h-[240px] rounded-full bg-[#FAE5DF]/50 blur-[50px] pointer-events-none -z-10" />
-
-              {/* Testimonial 1 */}
-              <motion.div 
-                whileHover={{ y: -4 }}
-                className="bg-white/95 backdrop-blur-md rounded-[2rem] border border-[#F1DFD8] p-6 shadow-[0_8px_30px_rgba(232,109,81,0.02)] relative flex flex-col justify-between animate-fadeIn"
-              >
-                {/* Quote Icon decorative */}
-                <div className="text-[64px] font-serif leading-none text-[#E86D51]/10 absolute top-2 left-4 pointer-events-none select-none">“</div>
-                
-                <div className="space-y-4 relative z-10 pt-4">
-                  {/* Rating Stars */}
-                  <div className="flex text-[#E86D51] gap-0.5">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Sparkles key={i} className="w-3.5 h-3.5 fill-[#E86D51]/20 text-[#E86D51]" />
-                    ))}
-                  </div>
-                  
-                  <p className="text-xs md:text-[13px] text-slate-700 font-light leading-relaxed">
-                    “平时换季皮肤特别干、甚至发痒脱皮。自从试了PŌNT这一套山茶花爽肤水和修护精华，使用两周后，原本粗糙干燥的紧绷感就明显缓解了，而且非常清爽，完全不刺激不闷闭口，皮肤重现光泽感！”
-                  </p>
-                </div>
-
-                <div className="border-t border-slate-100 pt-4 mt-6 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#FFF2EE] to-[#FCD9CF] border border-white flex items-center justify-center text-xs font-bold text-[#E86D51] shadow-sm">
-                      雨
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-800">小雨</h4>
-                      <span className="text-[10px] text-slate-400 font-medium">混合肌 · 28岁</span>
-                    </div>
-                  </div>
-                  <span className="text-[9px] font-bold text-slate-400 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full">
-                    已验证买家
-                  </span>
-                </div>
-              </motion.div>
-
-              {/* Testimonial 2 */}
-              <motion.div 
-                whileHover={{ y: -4 }}
-                className="bg-white/95 backdrop-blur-md rounded-[2rem] border border-[#F1DFD8] p-6 shadow-[0_8px_30px_rgba(232,109,81,0.02)] relative flex flex-col justify-between animate-fadeIn"
-              >
-                {/* Quote Icon decorative */}
-                <div className="text-[64px] font-serif leading-none text-[#E86D51]/10 absolute top-2 left-4 pointer-events-none select-none">“</div>
-                
-                <div className="space-y-4 relative z-10 pt-4">
-                  {/* Rating Stars */}
-                  <div className="flex text-[#E86D51] gap-0.5">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Sparkles key={i} className="w-3.5 h-3.5 fill-[#E86D51]/20 text-[#E86D51]" />
-                    ))}
-                  </div>
-                  
-                  <p className="text-xs md:text-[13px] text-slate-700 font-light leading-relaxed">
-                    “作为一枚超级干皮，平时最怕抗衰护肤品厚重黏腻。这个面霜的质地轻盈如慕斯，触肤即融！适合作为每日的修护主力军。现在苹果肌和额头都有明显的充盈弹润感，小细纹基本看不出来了，绝对会无限回购！”
-                  </p>
-                </div>
-
-                <div className="border-t border-slate-100 pt-4 mt-6 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#FFF2EE] to-[#FCD9CF] border border-white flex items-center justify-center text-xs font-bold text-[#E86D51] shadow-sm">
-                      琪
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-800">琪琪</h4>
-                      <span className="text-[10px] text-slate-400 font-medium">干性肌 · 32岁</span>
-                    </div>
-                  </div>
-                  <span className="text-[9px] font-bold text-slate-400 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full">
-                    已验证买家
-                  </span>
-                </div>
-              </motion.div>
-            </div>
-          </div>
-        </section>
-
-        {/* ========================================== */}
-        {/* SUB-SECTION 09: CUSTOM SKINCARE EXCLUSIVE  */}
-        {/* ========================================== */}
-        <section id="exclusive-solution-section" className="space-y-10 py-6">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-[#FFF2EE] text-[#E86D51] flex items-center justify-center text-xs font-black border border-[#F4E2DC] shadow-sm">
-              09
-            </div>
-            <div className="h-[1px] flex-1 bg-gradient-to-r from-[#F4E2DC] to-transparent" />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Left Column: Personalized Service Features */}
-            <div className="lg:col-span-5 space-y-6">
-              <div className="space-y-3">
-                <span className="text-[11px] text-[#E86D51] uppercase tracking-[0.2em] font-bold block">专属方案</span>
-                <h2 className="text-3xl font-light text-slate-900 leading-tight">
-                  定制你的 <br />
-                  <span className="font-sans italic font-normal text-[#E86D51]">专属护肤方案</span>
-                </h2>
-                <p className="text-slate-500 text-xs md:text-sm leading-relaxed font-light">
-                  每个人的肌肤都是独一无二的。我们提供由AI支持的多维肌肤评测，并配有一对一专业顾问咨询服务，为您提供科学的产品搭配与调理建议。
-                </p>
-              </div>
-
-              {/* Service list */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                  { title: '了解肤质', desc: '科学多维测算，精确把握角质水分与油脂状态。', icon: <Users className="w-4 h-4 text-[#E86D51]" /> },
-                  { title: '个性方案', desc: '根据年龄与肤质，智能定制晨晚间护理搭配。', icon: <BookOpen className="w-4 h-4 text-[#E86D51]" /> },
-                  { title: '专家支持', desc: '专设美肤顾问一对一在线指导，随时解答护肤难题。', icon: <MessageSquare className="w-4 h-4 text-[#E86D51]" /> },
-                  { title: '追踪改善', desc: '建立个人护肤档案，持续追踪胶原蛋白流失情况。', icon: <RefreshCw className="w-4 h-4 text-[#E86D51]" /> }
-                ].map((svc, i) => (
-                  <div key={i} className="p-4 bg-white/70 backdrop-blur-md rounded-2xl border border-[#F1DFD8]/60 flex gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-[#FFF2EE] flex-shrink-0 flex items-center justify-center border border-white">
-                      {svc.icon}
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className="text-xs font-bold text-slate-800">{svc.title}</h4>
-                      <p className="text-[10px] text-slate-500 leading-relaxed font-light">{svc.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Functional CTA */}
-              <div className="flex gap-4">
-                <button
-                  onClick={() => scrollToSection('consultation-section', 'CONSULTATION')}
-                  className="flex-1 py-3 px-6 rounded-2xl bg-[#E86D51] hover:bg-[#c4533a] text-white font-bold text-xs tracking-widest uppercase transition-all duration-300 shadow-md shadow-[#E86D51]/10 flex items-center justify-center gap-1"
-                >
-                  开始智能肤质测验
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setSelectedProduct(PRODUCTS[0])}
-                  className="py-3 px-6 rounded-2xl bg-white border border-[#F1DFD8] text-slate-700 hover:bg-[#FFF2EE] hover:text-[#E86D51] font-bold text-xs tracking-widest uppercase transition-all duration-300"
-                >
-                  立即挑选产品
-                </button>
-              </div>
-            </div>
-
-            {/* Right Column: Q&A Interactive Accordion */}
-            <div className="lg:col-span-7 space-y-4">
-              <span className="text-[10px] font-bold text-slate-400 tracking-wider uppercase block">
-                常见疑问解答 (PRODUCT & SKIN FAQ):
-              </span>
-              
-              <div className="space-y-3.5">
-                {[
-                  {
-                    q: '适合什么肤质?',
-                    a: 'PŌNT系列化妆品精选山茶花精萃、多重活性肽及舒缓甘草酸二钾，采用安全低敏的天然配方。不含酒精、人造香料及强致敏性防腐剂，因此适合极度干性、油性、混合性、以及极易脆弱敏感泛红的肌肤，温和修护角质层。'
-                  },
-                  {
-                    q: '如何搭配完整的护理流程?',
-                    a: '为了让活性成分在细胞层级发挥最大协同保水及重塑效果，我们推荐科学四步曲：01 用氨基酸洗面奶温和洁肤 -> 02 用山茶花活氧爽肤水打开水活屏障 -> 03 涂抹去皱保湿修护精华淡化细纹 -> 04 抹上淡化面霜构筑长效滋润屏障网锁水。坚持晨晚护理。'
-                  },
-                  {
-                    q: '多久能看到明显的肌肤改善?',
-                    a: '经过50名测试者的临床医学反馈，大多数使用者在持续使用7天内即可感受到皮肤的水润饱满感与干燥脱屑明显改善；持续搭配使用14天以上，闭口及受损红血丝屏障基本恢复匀净；使用满28天（肌肤细胞天然更新周期），细纹与面部轮廓紧致提拉效果达到最佳。'
-                  }
-                ].map((item, idx) => {
-                  const isOpen = activeAccordion === idx;
-                  return (
-                    <div 
-                      key={idx}
-                      className="bg-white/90 backdrop-blur-sm border border-[#F1DFD8] rounded-2xl overflow-hidden transition-all duration-300"
-                    >
-                      <button
-                        onClick={() => setActiveAccordion(isOpen ? null : idx)}
-                        className="w-full text-left p-5 flex items-center justify-between gap-4 font-bold text-xs md:text-sm text-slate-800 hover:text-[#E86D51] transition-colors focus:outline-none"
-                      >
-                        <span className="font-semibold flex items-center gap-3 text-left">
-                          <span className="text-[#E86D51] font-mono text-[11px] font-black">Q{idx + 1}.</span>
-                          {item.q}
-                        </span>
-                        <div className="w-6 h-6 rounded-full bg-[#FFF2EE] flex items-center justify-center text-[#E86D51] flex-shrink-0">
-                          {isOpen ? <Minus className="w-3.5 h-3.5 stroke-[2.5]" /> : <Plus className="w-3.5 h-3.5 stroke-[2.5]" />}
-                        </div>
-                      </button>
-
-                      <AnimatePresence initial={false}>
-                        {isOpen && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.35, ease: "easeInOut" }}
-                          >
-                            <div className="px-5 pb-5 pt-0 border-t border-slate-50 text-xs text-slate-500 font-light leading-relaxed">
-                              <div className="bg-[#FFFDFD] p-4 rounded-xl border border-slate-100/60 shadow-inner">
-                                {item.a}
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
           </div>
         </section>
 
@@ -2243,8 +3029,8 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
           
           {/* Logo column */}
           <div className="col-span-2 space-y-4">
-            <div className="text-2xl font-light tracking-[0.25em] text-slate-900">
-              P<span className="relative inline-block">O<span className="absolute -top-[1.5px] left-0 right-0 h-[1.5px] bg-slate-900 rounded-full" /></span>NT
+            <div className="text-2xl font-light tracking-[0.25em] text-slate-900 flex items-center">
+              P<span className="relative inline-block tracking-normal select-none" style={{ marginRight: '0.25em' }}><span className="relative inline-block">O<span className="absolute -top-[1.5px] left-0 right-0 h-[1.5px] bg-slate-900 rounded-full" /></span></span>NT
             </div>
             <p className="text-slate-400 text-xs font-light leading-relaxed max-w-[200px]">
               致力于高端专研抗初老与皮肤屏障重建修护。融汇先锋医学护肤科技，奢享恒久莹润肤感。
@@ -2399,6 +3185,43 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
         )}
       </AnimatePresence>
 
-    </div>
+      {/* Cinematic Exit Card Overlay */}
+      <AnimatePresence>
+        {isExiting && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.45, ease: "easeInOut" }}
+            className="absolute inset-0 z-[200] flex flex-col justify-between p-8 md:p-12 bg-gradient-to-b from-[#FAF8F5] via-[#FCFAF7] to-[#F5F2EE] text-[#4A3E3D]"
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+          >
+            {/* Soft, luxurious reflections matching picture 2 */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.9),transparent_55%)] pointer-events-none" />
+            
+            <div /> {/* Top spacer */}
+
+            {/* Middle PÖNT Brand Logo */}
+            <div className="flex flex-col items-center justify-center my-auto">
+              <h1 className="text-7xl md:text-9xl font-light tracking-[0.3em] text-[#9E826C] select-none pl-6 mr-[-0.3em] font-sans flex items-center">
+                P<span className="relative inline-block tracking-normal" style={{ marginRight: '0.3em' }}><span className="relative inline-block">O<span className="absolute -top-[3px] md:-top-[5px] left-0 right-0 h-[2.5px] md:h-[4px] bg-[#9E826C] rounded-full" /></span></span>NT
+              </h1>
+            </div>
+
+            {/* Bottom info replicating image 2 card */}
+            <div className="flex flex-col items-start space-y-2 mt-auto text-left">
+              <span className="text-sm font-semibold tracking-widest text-[#2997ff] uppercase">
+                2022 // 商业设计
+              </span>
+              <h2 className="text-3xl md:text-4xl font-bold tracking-wider text-[#4A3E3D]">
+                PONT 化妆品品牌
+              </h2>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+    </motion.div>
+    </>
   );
 }

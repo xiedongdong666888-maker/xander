@@ -102,6 +102,7 @@ export const HomeVideoBackground: React.FC<HomeVideoBackgroundProps> = ({ active
     // 初始化 Hls.js 以支持 Chrome, Firefox 等平台极致的滑动寻帧性能
     if (Hls.isSupported()) {
       hls = new Hls({
+        autoStartLoad: false,
         enableWorker: true,        // 将 TS 分片 demuxing 解包动作移至 Web Worker 线程，杜绝阻碍主渲染线程
         lowLatencyMode: true,      // 极小延迟缓冲加载
         maxBufferLength: 45,       // 维持足够强劲的前缓冲
@@ -114,26 +115,25 @@ export const HomeVideoBackground: React.FC<HomeVideoBackgroundProps> = ({ active
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-        // 核心性能与清晰度优化：为了彻底解决背景动画很模糊的问题，同时保证滚动寻帧的完美流畅，
-        // 我们选择 1080p 作为在清晰度和解码性能上的最佳平衡。
-        // 如果没有 1080p，则选择最接近 1080p 的最高分辨率级（如 720p），最高不超过 1080p 以免性能卡顿。
+        // Find the absolute highest quality level dynamically
         let targetIndex = 0;
-        let bestHeight = 0;
-        
+        let maxHeight = 0;
+        let maxBandwidth = 0;
         data.levels.forEach((level, index) => {
-          if (level.height) {
-            if (level.height <= 1080 && level.height > bestHeight) {
-              bestHeight = level.height;
-              targetIndex = index;
-            }
+          if (level.height && level.height > maxHeight) {
+            maxHeight = level.height;
+            targetIndex = index;
+            maxBandwidth = level.bandwidth;
+          } else if (level.height === maxHeight && level.bandwidth > maxBandwidth) {
+            targetIndex = index;
+            maxBandwidth = level.bandwidth;
           }
         });
 
-        if (bestHeight === 0 && data.levels.length > 0) {
-          targetIndex = data.levels.length - 1;
-        }
-
+        hls!.startLevel = targetIndex;
         hls!.currentLevel = targetIndex;
+        hls!.loadLevel = targetIndex;
+        hls!.startLoad();
         setIsLoaded(true);
         updateTargetTime(smoothProgress.get());
       });

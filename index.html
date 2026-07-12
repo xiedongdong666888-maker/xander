@@ -169,6 +169,10 @@
         from { transform: translateY(1.25rem); }
         to { transform: translateY(0); }
       }
+      @keyframes shimmer {
+        0% { transform: translateX(-150%) skewX(-12deg); }
+        100% { transform: translateX(150%) skewX(-12deg); }
+      }
       .animate-in { animation-duration: 300ms; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
       .fade-in { animation-name: fade-in; }
       .slide-in-from-bottom-5 { animation-name: slide-in-from-bottom-5; }

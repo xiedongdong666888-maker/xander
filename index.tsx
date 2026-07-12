@@ -13,6 +13,7 @@ import PhosphorBackground from './components/ui/phosphor-30';
 import HomeVideoBackground from './components/HomeVideoBackground';
 import GlowingFooter from './components/GlowingFooter';
 import PontBrandPage from './components/pages/PontBrandPage';
+import SpiderVersePage from './components/pages/SpiderVersePage';
 
 // ==========================================
 // 1. TYPES & INTERFACES
@@ -1185,6 +1186,8 @@ const HomePage: React.FC<{ onNavigate: (page: PageState) => void }> = ({ onNavig
         {selectedPreview && (
           selectedPreview.id === '1' ? (
             <PontBrandPage onClose={() => setSelectedPreview(null)} />
+          ) : selectedPreview.id === '2' ? (
+            <SpiderVersePage onClose={() => setSelectedPreview(null)} />
           ) : (
             <motion.div 
               initial={{ opacity: 0 }}
@@ -1387,6 +1390,8 @@ const WorksPage: React.FC<{ onNavigate?: (page: PageState) => void }> = ({ onNav
       {selectedWork && (
         selectedWork.id === '1' ? (
           <PontBrandPage onClose={() => setSelectedWork(null)} />
+        ) : selectedWork.id === '2' ? (
+          <SpiderVersePage onClose={() => setSelectedWork(null)} />
         ) : (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-6 bg-black/90 backdrop-blur-2xl animate-in fade-in duration-300">
           <div className="w-full md:max-w-7xl h-full md:h-[90vh] bg-[#050508] md:rounded-[2rem] border-0 md:border border-white/10 relative flex flex-col md:flex-row overflow-hidden shadow-2xl">
