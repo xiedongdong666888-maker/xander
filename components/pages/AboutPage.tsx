@@ -3,6 +3,7 @@ import { Fingerprint, MapPin, Mail, Award, GraduationCap, Briefcase, Trophy, Scr
 import { PageState } from '../../types';
 import GlowingFooter from '../GlowingFooter';
 import ThreeDShowcase from '../ThreeDShowcase';
+import { BlurFade } from '../ui/blur-fade';
 
 interface AboutPageProps {
   onNavigate?: (page: PageState) => void;
@@ -41,11 +42,13 @@ const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
           {/* Bio Info */}
           <div className="lg:col-span-8 space-y-10">
               <div className="animate-in slide-in-from-right-10 duration-700 fade-in">
-                  <h1 className="text-5xl md:text-7xl font-orbitron font-bold text-white mb-6 leading-none">
-                      数字虚空的 <span className="text-neon-purple block md:inline">构建者</span>
-                  </h1>
+                  <BlurFade delay={0.05} duration={0.6}>
+                      <h1 className="text-5xl md:text-7xl font-orbitron font-bold text-white mb-6 leading-none">
+                          数字虚空的 <span className="text-neon-purple block md:inline">构建者</span>
+                      </h1>
+                  </BlurFade>
                   
-                  <div className="flex flex-wrap gap-3 text-xs md:text-sm font-orbitron font-bold uppercase tracking-wider text-gray-400 mb-8">
+                  <BlurFade delay={0.15} duration={0.6} className="flex flex-wrap gap-3 text-xs md:text-sm font-orbitron font-bold uppercase tracking-wider text-gray-400 mb-8">
                       <span className="px-4 py-1.5 border border-neon-cyan/30 bg-neon-cyan/5 rounded-full text-neon-cyan">25 Y.O</span>
                       <span className="px-4 py-1.5 border border-white/10 rounded-full flex items-center gap-2">
                           <MapPin size={12} /> 安徽 / 山东
@@ -53,20 +56,20 @@ const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
                       <span className="px-4 py-1.5 border border-white/10 rounded-full flex items-center gap-2">
                           <Mail size={12} /> 视觉传达设计
                       </span>
-                  </div>
-
-                  <div className="prose prose-invert max-w-none font-rajdhani text-xl text-gray-300 leading-relaxed border-l-2 border-white/10 pl-6">
+                  </BlurFade>
+                  
+                  <BlurFade delay={0.25} duration={0.6} className="prose prose-invert max-w-none font-rajdhani text-xl text-gray-300 leading-relaxed border-l-2 border-white/10 pl-6">
                       <p className="mb-4">
                           本科毕业于<strong className="text-white">山东艺术学院</strong>，目前于<strong className="text-white">安徽建筑大学</strong>设计创意学院攻读硕士学位。
                       </p>
                       <p>
                          作为新生代设计师，我致力于探索传统文化与现代数字技术的边界。从严谨的品牌全案到实验性的 AIGC 影像创作，我的作品始终追求在“虚”与“实”之间建立情感链接。曾获多项国际与国家级设计大奖，包括华灿奖、ICIAD 视觉设计金奖等。
                       </p>
-                  </div>
+                  </BlurFade>
               </div>
 
               {/* Education Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <BlurFade delay={0.35} duration={0.6} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="liquid-glass p-6 rounded-xl border-l-4 border-neon-cyan group interactive">
                       <div className="flex items-center justify-between mb-3">
                           <GraduationCap className="text-neon-cyan group-hover:scale-110 transition-transform" size={24} />
@@ -83,7 +86,7 @@ const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
                       <h3 className="text-xl font-bold text-white font-rajdhani">山东艺术学院</h3>
                       <p className="text-gray-400 text-sm mt-1 font-orbitron">视觉传达设计 / 学士</p>
                   </div>
-              </div>
+              </BlurFade>
           </div>
         </div>
 

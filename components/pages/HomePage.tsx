@@ -1,9 +1,35 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { motion, useScroll, useTransform, useSpring, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ArrowRight, ArrowUpRight, X } from 'lucide-react';
 import { WORK_ITEMS } from '../../constants';
 import { PageState, WorkItem } from '../../types';
 import GlowingFooter from '../GlowingFooter';
+import { TextEffect } from '../ui/text-effect';
+import { BlurFade } from '../ui/blur-fade';
+
+const simultaneousVariants = {
+  container: {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0,
+        delayChildren: 0.1,
+      },
+    },
+  },
+  item: {
+    hidden: { opacity: 0, y: 25 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 1.0,
+        ease: [0.16, 1, 0.3, 1],
+      },
+    },
+  },
+};
 
 // Sub-component for individual parallax work card in HomePage Vertical Timeline
 interface TimelineCardProps {
@@ -40,12 +66,16 @@ const TimelineCard: React.FC<TimelineCardProps> = ({ work, onClick }) => {
 
       <div className="absolute bottom-0 left-0 p-6 w-full flex justify-between items-end">
         <div className="max-w-[80%]">
-          <span className="text-neon-cyan text-xs font-orbitron tracking-widest uppercase mb-1.5 block">
-            {work.year} // {work.category}
-          </span>
-          <h3 className="text-xl md:text-2xl font-bold font-orbitron text-white leading-tight">
-            {work.title}
-          </h3>
+          <BlurFade inView delay={0.08}>
+            <span className="text-neon-cyan text-xs font-orbitron tracking-widest uppercase mb-1.5 block">
+              {work.year} // {work.category}
+            </span>
+          </BlurFade>
+          <BlurFade inView delay={0.18}>
+            <h3 className="text-xl md:text-2xl font-bold font-orbitron text-white leading-tight">
+              {work.title}
+            </h3>
+          </BlurFade>
         </div>
         
         <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white scale-90 group-hover:scale-100 group-hover:bg-neon-cyan group-hover:border-neon-cyan group-hover:text-black transition-all duration-300">
@@ -58,9 +88,21 @@ const TimelineCard: React.FC<TimelineCardProps> = ({ work, onClick }) => {
 
 interface HomePageProps {
   onNavigate: (page: PageState) => void;
+  isTransitioning?: boolean;
 }
 
-const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
+const HomePage: React.FC<HomePageProps> = ({ onNavigate, isTransitioning }) => {
+  const [startAnimation, setStartAnimation] = useState(false);
+
+  useEffect(() => {
+    if (!isTransitioning) {
+      const timer = setTimeout(() => {
+        setStartAnimation(true);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isTransitioning]);
+
   const { scrollY } = useScroll();
   const opacity = useTransform(scrollY, [0, 300], [1, 0]);
   const heroTextY = useTransform(scrollY, [0, 500], [0, -60]);
@@ -124,23 +166,31 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
             className="text-4xl sm:text-5xl lg:text-6xl font-light tracking-[0.08em] text-white mb-6 leading-[1.5]" 
             style={{ fontFamily: "'Plus Jakarta Sans', 'Microsoft YaHei', sans-serif" }}
           >
-            踏入数字与时空的 <br />
-            <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-white via-white/95 to-cyan-400 drop-shadow-[0_0_20px_rgba(41,151,255,0.25)]">
-              星轨边界
+            <TextEffect per="char" variants={simultaneousVariants} trigger={startAnimation} className="inline">
+              踏入数字与时空的
+            </TextEffect> <br />
+            <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-white via-white/95 to-cyan-400 drop-shadow-[0_0_20px_rgba(41,151,255,0.25)] inline-block">
+              <TextEffect per="char" variants={simultaneousVariants} trigger={startAnimation} className="inline">
+                星轨边界
+              </TextEffect>
             </span>
           </h1>
           
-          <p className="text-xs sm:text-sm text-gray-400/90 font-sans tracking-[0.18em] max-w-lg mb-8 leading-relaxed">
-            探索宇宙星河与智能创新的融合艺术，<br className="hidden sm:inline" />
-            每一次滚动，都在进入由 AIGC 与沉浸式设计构筑的数字维度。
-          </p>
+          <BlurFade trigger={startAnimation} delay={0.4} duration={0.6}>
+            <p className="text-xs sm:text-sm text-gray-400/90 font-sans tracking-[0.18em] max-w-lg mb-8 leading-relaxed">
+              探索宇宙星河与智能创新的融合艺术，<br className="hidden sm:inline" />
+              每一次滚动，都在进入由 AIGC 与沉浸式设计构筑的数字维度。
+            </p>
+          </BlurFade>
 
-          <button 
-            onClick={scrollToTimeline}
-            className="group px-8 py-3 rounded-full bg-gradient-to-r from-cyan-500/80 to-indigo-600/85 text-white text-xs md:text-sm font-medium tracking-[0.15em] flex items-center gap-2.5 border border-cyan-400/20 hover:border-cyan-400/40 transition-all duration-300 hover:scale-105 active:scale-95 cursor-none interactive shadow-[0_4px_20px_rgba(6,182,212,0.2)] hover:shadow-[0_4px_30px_rgba(6,182,212,0.4)]"
-          >
-            开始探索 <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-          </button>
+          <BlurFade trigger={startAnimation} delay={0.6} duration={0.6}>
+            <button 
+              onClick={scrollToTimeline}
+              className="group px-8 py-3 rounded-full bg-gradient-to-r from-cyan-500/80 to-indigo-600/85 text-white text-xs md:text-sm font-medium tracking-[0.15em] flex items-center gap-2.5 border border-cyan-400/20 hover:border-cyan-400/40 transition-all duration-300 hover:scale-105 active:scale-95 cursor-none interactive shadow-[0_4px_20px_rgba(6,182,212,0.2)] hover:shadow-[0_4px_30px_rgba(6,182,212,0.4)]"
+            >
+              开始探索 <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            </button>
+          </BlurFade>
         </motion.div>
         
         {/* Bottom Editorial Info Split */}
@@ -155,21 +205,25 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
               <div className="w-1.5 h-1.5 rounded-full bg-neon-cyan relative z-10 shadow-[0_0_8px_rgba(41,151,255,0.8)]" />
             </div>
             <div className="space-y-1">
-              <h3 
-                className="text-sm sm:text-base md:text-lg lg:text-[19px] font-light text-white/95 leading-relaxed tracking-wide" 
-                style={{ fontFamily: "'Plus Jakarta Sans', 'Microsoft YaHei', sans-serif" }}
-              >
-                每一步皆在重构时空轨迹， <br />
-                那是来自数字宇宙的 <span className="text-neon-cyan font-medium select-text selection:bg-neon-cyan/20">智能脉冲信号。</span>
-              </h3>
+              <BlurFade trigger={startAnimation} delay={0.7} duration={0.6}>
+                <h3 
+                  className="text-sm sm:text-base md:text-lg lg:text-[19px] font-light text-white/95 leading-relaxed tracking-wide" 
+                  style={{ fontFamily: "'Plus Jakarta Sans', 'Microsoft YaHei', sans-serif" }}
+                >
+                  每一步皆在重构时空轨迹， <br />
+                  那是来自数字宇宙的 <span className="text-neon-cyan font-medium select-text selection:bg-neon-cyan/20">智能脉冲信号。</span>
+                </h3>
+              </BlurFade>
             </div>
           </div>
 
           {/* Bottom Right: Description */}
           <div className="w-full md:w-80 lg:w-[400px] text-left flex-shrink-0 border-l border-white/20 pl-4 md:pl-5">
-            <p className="text-xs text-gray-400/90 font-sans leading-relaxed tracking-wider">
-              通过编年史时间轴，回溯在商业品牌设计、AIGC 影像技术迭代与沉浸式交互层面的艺术求索之路。以数据为星光，指引创意走向无限边界。
-            </p>
+            <BlurFade trigger={startAnimation} delay={0.8} duration={0.6}>
+              <p className="text-xs text-gray-400/90 font-sans leading-relaxed tracking-wider">
+                通过编年史时间轴，回溯在商业品牌设计、AIGC 影像技术迭代与沉浸式交互层面的艺术求索之路。以数据为星光，指引创意走向无限边界。
+              </p>
+            </BlurFade>
           </div>
         </motion.div>
       </section>
@@ -186,14 +240,18 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
           className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-24 relative z-10"
         >
           <div>
-            <span className="text-neon-cyan font-orbitron text-xs tracking-widest uppercase mb-1.5 block">
-              Time Helix Navigator
-            </span>
-            <h2 className="text-3xl md:text-5xl font-bold text-white font-orbitron">项目时间轨迹</h2>
+            <BlurFade inView delay={0.1}>
+              <span className="text-neon-cyan font-orbitron text-xs tracking-widest uppercase mb-1.5 block">
+                Time Helix Navigator
+              </span>
+            </BlurFade>
+            <BlurFade inView delay={0.2}>
+              <h2 className="text-3xl md:text-5xl font-bold text-white font-orbitron">项目时间轨迹</h2>
+            </BlurFade>
           </div>
 
           {/* Futuristic Custom Category Switching */}
-          <div className="flex flex-wrap gap-2 p-1.5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md">
+          <BlurFade inView delay={0.3} className="flex flex-wrap gap-2 p-1.5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md">
             {(['全部', '商业设计', '比赛精选', '其他能力'] as const).map((filter) => (
               <button
                 key={filter}
@@ -207,7 +265,7 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 {filter === '全部' ? 'ALL WORKS' : filter}
               </button>
             ))}
-          </div>
+          </BlurFade>
         </motion.div>
 
         {/* Dynamic Vertical Timeline Paths */}
@@ -246,8 +304,12 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                       </div>
                     </div>
                     <div className="md:text-center z-10 bg-[#030014]/80 px-8 py-3 rounded-2xl border border-white/10 backdrop-blur-md shadow-2xl relative">
-                      <span className="text-[9px] font-orbitron tracking-[0.4em] text-gray-500 block uppercase mb-1">Portfolio Chapter</span>
-                      <h3 className="text-lg md:text-xl font-black font-orbitron text-white tracking-widest">{categoryName}</h3>
+                      <BlurFade inView delay={0.05}>
+                        <span className="text-[9px] font-orbitron tracking-[0.4em] text-gray-500 block uppercase mb-1">Portfolio Chapter</span>
+                      </BlurFade>
+                      <BlurFade inView delay={0.15}>
+                        <h3 className="text-lg md:text-xl font-black font-orbitron text-white tracking-widest">{categoryName}</h3>
+                      </BlurFade>
                     </div>
                   </div>
 
@@ -304,7 +366,7 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                             </div>
 
                             <div className="z-10 text-left md:contents">
-                              <div className={`flex flex-wrap gap-2.5 mb-3 items-center ${isEven ? 'justify-start' : 'justify-start md:justify-end'}`}>
+                              <BlurFade inView delay={0.05} className={`flex flex-wrap gap-2.5 mb-3 items-center ${isEven ? 'justify-start' : 'justify-start md:justify-end'}`}>
                                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-orbitron tracking-widest uppercase border 
                                   ${work.category === '商业设计' ? 'bg-neon-cyan/5 border-neon-cyan/20 text-neon-cyan' :
                                     work.category === '比赛精选' ? 'bg-neon-purple/5 border-neon-purple/20 text-neon-purple' :
@@ -313,22 +375,26 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                                   {work.category}
                                 </span>
                                 <span className="font-mono text-xs text-gray-500">#{work.id.padStart(3, '0')}</span>
-                              </div>
+                              </BlurFade>
                               
-                              <h3 
-                                onClick={() => setSelectedPreview(work)}
-                                className="text-2xl font-bold font-orbitron text-white hover:text-neon-cyan transition-colors cursor-none interactive leading-tight mb-4 inline-block"
-                              >
-                                {work.title}
-                              </h3>
+                              <BlurFade inView delay={0.12}>
+                                <h3 
+                                  onClick={() => setSelectedPreview(work)}
+                                  className="text-2xl font-bold font-orbitron text-white hover:text-neon-cyan transition-colors cursor-none interactive leading-tight mb-4 inline-block"
+                                >
+                                  {work.title}
+                                </h3>
+                              </BlurFade>
                               
-                              <p className={`text-gray-400 font-rajdhani text-lg leading-relaxed max-w-lg mb-6 
-                                ${isEven ? 'text-left' : 'text-left md:text-right md:ml-auto'}`}
-                              >
-                                {work.description}
-                              </p>
+                              <BlurFade inView delay={0.2}>
+                                <p className={`text-gray-400 font-rajdhani text-lg leading-relaxed max-w-lg mb-6 
+                                  ${isEven ? 'text-left' : 'text-left md:text-right md:ml-auto'}`}
+                                >
+                                  {work.description}
+                                </p>
+                              </BlurFade>
 
-                              <div className={`flex gap-4 items-center ${isEven ? 'justify-start' : 'justify-start md:justify-end'}`}>
+                              <BlurFade inView delay={0.28} className={`flex gap-4 items-center ${isEven ? 'justify-start' : 'justify-start md:justify-end'}`}>
                                 <button 
                                   onClick={() => setSelectedPreview(work)}
                                   className="group/btn relative px-5 py-2.5 bg-white/5 border border-white/10 hover:border-neon-cyan/50 hover:bg-neon-cyan/5 text-xs text-white hover:text-neon-cyan font-orbitron flex items-center gap-2 tracking-widest transition-all duration-300 cursor-none interactive rounded-lg"
@@ -336,7 +402,7 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                                   <span>查看详情 / RETRIEVE DETAILS</span>
                                   <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
                                 </button>
-                              </div>
+                              </BlurFade>
                             </div>
                           </motion.div>
                         </div>

@@ -617,14 +617,94 @@ const CustomCursor: React.FC = () => {
   const [isHovered, setIsHovered] = useState(false);
   const cursorX = useMotionValue(-100);
   const cursorY = useMotionValue(-100);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const springConfig = { damping: 25, stiffness: 400 };
   const cursorXSpring = useSpring(cursorX, springConfig);
   const cursorYSpring = useSpring(cursorY, springConfig);
   useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    interface Particle {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      size: number;
+      color: string;
+      alpha: number;
+      decay: number;
+      twinkleSpeed: number;
+      twinklePhase: number;
+    }
+
+    const particles: Particle[] = [];
+    const colors = [
+      'rgba(41, 151, 255, ',  // Cyan
+      'rgba(191, 90, 242, ',  // Purple
+      'rgba(232, 109, 81, ',  // Soft Orange/Red
+      'rgba(255, 255, 255, ', // White
+    ];
+
+    const createParticles = (x: number, y: number) => {
+      const count = Math.random() < 0.4 ? 2 : 1;
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 1.0 + 0.2;
+        const size = Math.random() * 2.2 + 0.8;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size,
+          color,
+          alpha: Math.random() * 0.6 + 0.4,
+          decay: Math.random() * 0.015 + 0.008,
+          twinkleSpeed: Math.random() * 0.08 + 0.04,
+          twinklePhase: Math.random() * Math.PI * 2,
+        });
+      }
+    };
+
     const moveCursor = (e: MouseEvent) => {
       cursorX.set(e.clientX - 16); 
       cursorY.set(e.clientY - 16);
+      createParticles(e.clientX, e.clientY);
     };
+
+    const handleMouseClick = (e: MouseEvent) => {
+      const count = Math.floor(Math.random() * 5) + 12;
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 3.5 + 1.2;
+        const size = Math.random() * 2.5 + 1.0;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        particles.push({
+          x: e.clientX,
+          y: e.clientY,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size,
+          color,
+          alpha: 1.0,
+          decay: Math.random() * 0.025 + 0.015,
+          twinkleSpeed: Math.random() * 0.15 + 0.08,
+          twinklePhase: Math.random() * Math.PI * 2,
+        });
+      }
+    };
+
     const handleMouseOver = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (target.tagName === 'BUTTON' || target.tagName === 'A' || target.closest('button') || target.closest('a') || target.classList.contains('interactive') || target.closest('.interactive')) {
@@ -635,13 +715,59 @@ const CustomCursor: React.FC = () => {
     };
     window.addEventListener('mousemove', moveCursor);
     window.addEventListener('mouseover', handleMouseOver);
+    window.addEventListener('mousedown', handleMouseClick);
+
+    let animationFrameId: number;
+    const renderParticles = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= p.decay;
+        p.twinklePhase += p.twinkleSpeed;
+
+        const twinkle = Math.sin(p.twinklePhase) * 0.25;
+        const currentAlpha = Math.max(0, Math.min(1, p.alpha + twinkle));
+
+        if (currentAlpha <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        ctx.beginPath();
+        const particleSize = Math.max(0.1, p.size * currentAlpha);
+        ctx.arc(p.x, p.y, particleSize, 0, Math.PI * 2);
+        ctx.fillStyle = `${p.color}${currentAlpha})`;
+        
+        ctx.shadowBlur = p.size * 2.5;
+        ctx.shadowColor = p.color.includes('255, 255, 255') ? 'rgba(255, 255, 255, 0.6)' : `${p.color}0.6)`;
+        
+        ctx.fill();
+      }
+
+      ctx.shadowBlur = 0;
+      animationFrameId = requestAnimationFrame(renderParticles);
+    };
+
+    renderParticles();
+
     return () => {
+      window.removeEventListener('resize', resizeCanvas);
       window.removeEventListener('mousemove', moveCursor);
       window.removeEventListener('mouseover', handleMouseOver);
+      window.removeEventListener('mousedown', handleMouseClick);
+      cancelAnimationFrame(animationFrameId);
     };
   }, [cursorX, cursorY]);
   return (
     <>
+      <canvas
+        ref={canvasRef}
+        className="fixed inset-0 pointer-events-none z-[9998]"
+        style={{ mixBlendMode: 'screen' }}
+      />
       <motion.div className="fixed top-0 left-0 w-2 h-2 bg-white rounded-full pointer-events-none z-[9999] mix-blend-difference" style={{ x: cursorX, y: cursorY, translateX: 14, translateY: 14 }} />
       <motion.div className="fixed top-0 left-0 border border-white/40 rounded-full pointer-events-none z-[9999] mix-blend-difference" style={{ x: cursorXSpring, y: cursorYSpring, height: 32, width: 32 }} animate={{ scale: isHovered ? 2.5 : 1, borderColor: isHovered ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.3)', backgroundColor: isHovered ? 'rgba(255, 255, 255, 0.1)' : 'transparent' }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
         <motion.span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[4px] font-orbitron text-white uppercase tracking-widest opacity-0" animate={{ opacity: isHovered ? 1 : 0 }}>OPEN</motion.span>
@@ -737,7 +863,7 @@ const CosmicBackground: React.FC<{ currentPage: PageState }> = ({ currentPage })
 
 const CoverPage: React.FC<{ onEnter: () => void }> = ({ onEnter }) => {
   return (
-    <div className="h-screen w-full flex flex-col items-center justify-center relative z-10">
+    <div className="h-screen w-full flex flex-col items-center justify-center relative z-10 pointer-events-none">
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] border border-neon-cyan/20 rounded-full animate-[spin_60s_linear_infinite]" />
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] border border-neon-purple/20 rounded-full animate-[spin_40s_linear_infinite_reverse]" />
       <div className="text-center space-y-6 p-8 relative w-full max-w-5xl">
@@ -749,10 +875,10 @@ const CoverPage: React.FC<{ onEnter: () => void }> = ({ onEnter }) => {
 
         <p className="font-rajdhani text-xl md:text-2xl text-gray-400 tracking-widest uppercase">数字艺术 <span className="text-neon-purple mx-2">•</span> 设计 <span className="text-neon-purple mx-2">•</span> 幻想</p>
         <div className="mt-12">
-          <button onClick={onEnter} className="group relative inline-flex items-center gap-2 px-8 py-4 bg-transparent border border-neon-cyan text-neon-cyan font-orbitron font-bold tracking-wider hover:bg-neon-cyan hover:text-black transition-all duration-300">
+          <button onClick={onEnter} className="group relative inline-flex items-center gap-2 px-8 py-4 bg-transparent border border-neon-cyan text-neon-cyan font-orbitron font-bold tracking-wider hover:bg-neon-cyan hover:text-black transition-all duration-300 rounded-full pointer-events-auto">
             <span>点击进入</span>
             <ChevronRight className="group-hover:translate-x-1 transition-transform" />
-            <div className="absolute -inset-1 bg-neon-cyan/20 blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute -inset-1 bg-neon-cyan/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
           </button>
         </div>
       </div>

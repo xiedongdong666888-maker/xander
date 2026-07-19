@@ -2,6 +2,7 @@ import React from 'react';
 import { WORK_ITEMS } from '../../constants';
 import { PageState } from '../../types';
 import GlowingFooter from '../GlowingFooter';
+import { BlurFade } from '../ui/blur-fade';
 
 interface CatalogPageProps {
   onNavigate?: (page: PageState) => void;
@@ -11,11 +12,13 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ onNavigate }) => {
   return (
     <div className="min-h-screen pt-28 md:pt-32 flex flex-col justify-between">
       <div className="px-6 md:px-24 max-w-6xl mx-auto w-full mb-16">
-        <h1 className="text-4xl font-orbitron font-bold mb-12 border-b border-neon-cyan/30 pb-4 inline-block">
-          主索引
-        </h1>
+        <BlurFade delay={0.05} duration={0.6}>
+          <h1 className="text-4xl font-orbitron font-bold mb-12 border-b border-neon-cyan/30 pb-4 inline-block">
+            主索引
+          </h1>
+        </BlurFade>
 
-        <div className="glass-panel rounded-lg overflow-hidden border border-white/5 bg-black/20 backdrop-blur-md">
+        <BlurFade delay={0.15} duration={0.7} className="glass-panel rounded-lg overflow-hidden border border-white/5 bg-black/20 backdrop-blur-md">
           <div className="grid grid-cols-12 gap-4 p-4 border-b border-gray-800 text-xs font-orbitron text-gray-500 uppercase tracking-wider">
             <div className="col-span-1">编号</div>
             <div className="col-span-5 md:col-span-4">标题</div>
@@ -49,7 +52,7 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ onNavigate }) => {
               </div>
             </div>
           ))}
-        </div>
+        </BlurFade>
       </div>
       <GlowingFooter onNavigate={onNavigate} />
     </div>

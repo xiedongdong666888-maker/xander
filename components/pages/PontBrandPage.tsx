@@ -677,8 +677,10 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
     if (!el) return;
 
     let lastScrollTop = el.scrollTop;
+    let lastEventTime = 0;
 
     const handleScroll = () => {
+      lastEventTime = performance.now();
       const currentScroll = el.scrollTop;
       setIsScrolled(currentScroll > 50);
       setScrollTop(currentScroll);
@@ -693,7 +695,8 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
 
       const beautyFilmSec = document.getElementById('beauty-film-section');
       if (beautyFilmSec && el) {
-        const targetScroll = beautyFilmSec.offsetTop;
+        const headerOffset = 80;
+        const targetScroll = beautyFilmSec.offsetTop - headerOffset;
         const currentScroll = el.scrollTop;
 
         // Auto-calibration: snap progress when far away from the transition zone
@@ -722,10 +725,12 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
 
     // Smooth inertia wheel logic
     const handleWheel = (e: WheelEvent) => {
+      lastEventTime = performance.now();
       // 1. First, check beauty film section interaction
       const beautyFilmSec = document.getElementById('beauty-film-section');
       if (beautyFilmSec && !isScrollLockedRef.current) {
-        const targetScroll = beautyFilmSec.offsetTop;
+        const headerOffset = 80;
+        const targetScroll = beautyFilmSec.offsetTop - headerOffset;
         const currentScroll = el.scrollTop;
         const progress = videoScrollProgressRef.current;
         const scrollingDown = e.deltaY > 0;
@@ -817,10 +822,12 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
 
     // Smooth inertia touch gesture support
     const handleTouchMove = (e: TouchEvent) => {
+      lastEventTime = performance.now();
       // 1. First, check beauty film section interaction
       const beautyFilmSec = document.getElementById('beauty-film-section');
       if (beautyFilmSec && !isScrollLockedRef.current && e.touches.length > 0) {
-        const targetScroll = beautyFilmSec.offsetTop;
+        const headerOffset = 80;
+        const targetScroll = beautyFilmSec.offsetTop - headerOffset;
         const currentScroll = el.scrollTop;
         const progress = videoScrollProgressRef.current;
         
@@ -955,10 +962,10 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
       }
     };
 
-    // Interpolation seek loop running at high performance (RAF)
+    // Direct, ultra-responsive seek loop (RAF)
     let animationFrameId: number;
     let lastSeekTime = 0;
-    const SEEK_THROTTLE_MS = 50; // Throttle to max 20 seeks per second for perfectly smooth network rendering
+    const SEEK_THROTTLE_MS = 60; // Throttled during active scroll to protect CPU/decoder
 
     const smoothSeekLoop = () => {
       const video = videoRef.current;
@@ -970,20 +977,30 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
         const diff = targetTimeRef.current - video.currentTime;
         const now = performance.now();
 
-        // If very close to target, snap immediately to prevent micro-jitter
-        if (Math.abs(diff) < 0.01) {
+        // If very close to target, snap immediately to prevent micro-jitter and unnecessary seeking
+        if (Math.abs(diff) < 0.02) {
           if (video.currentTime !== targetTimeRef.current) {
             video.currentTime = targetTimeRef.current;
             updateProgressHUD(targetTimeRef.current);
           }
         } else {
-          // Throttled seeking to prevent browser decoder choke on network stream
-          if (now - lastSeekTime > SEEK_THROTTLE_MS && !video.seeking) {
-            // Apply a larger lerp coefficient (0.4) for crisp, responsive scroll tracking
-            const nextTime = video.currentTime + diff * 0.40;
-            video.currentTime = nextTime;
-            updateProgressHUD(nextTime);
-            lastSeekTime = now;
+          // Determine if the user is actively scrolling/touching
+          const isScrollActive = (now - lastEventTime) < 150;
+
+          if (isScrollActive) {
+            // Throttled seeking during active scrolling to avoid choking the hardware decoder
+            if (now - lastSeekTime > SEEK_THROTTLE_MS && !video.seeking) {
+              video.currentTime = targetTimeRef.current;
+              updateProgressHUD(targetTimeRef.current);
+              lastSeekTime = now;
+            }
+          } else {
+            // User stopped scrolling! Instantly seek directly to the final exact target time
+            // as soon as the video is ready (not seeking), ensuring immediate 100% synchronization!
+            if (!video.seeking) {
+              video.currentTime = targetTimeRef.current;
+              updateProgressHUD(targetTimeRef.current);
+            }
           }
         }
       }
@@ -1743,7 +1760,7 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
         {/* ========================================== */}
         {/* SECTION 2: PRODUCT LINEUP SHOWCASE        */}
         {/* ========================================== */}
-        <section id="ritual-section" className="space-y-12">
+        <section id="ritual-section" className="scroll-mt-24 space-y-12">
           
           {/* Section Header */}
           <div className="text-center space-y-3">
@@ -1877,7 +1894,7 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
       <section 
         id="beauty-film-section" 
         ref={beautyFilmSectionRef}
-        className="relative w-full h-[75vh] min-h-[500px] md:h-[85vh] md:max-h-[720px] md:min-h-[580px] bg-transparent overflow-hidden md:max-w-[97vw] md:mx-auto flex flex-col items-center justify-center my-12 md:my-20"
+        className="scroll-mt-24 relative w-full h-[75vh] min-h-[500px] md:h-[85vh] md:max-h-[720px] md:min-h-[580px] bg-transparent overflow-hidden md:max-w-[97vw] md:mx-auto flex flex-col items-center justify-center my-12 md:my-20"
       >
         {/* Dynamic 16:9 Black Box Background Container */}
         {(() => {
@@ -2679,7 +2696,7 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
         {/* ========================================== */}
         {/* SECTION 3: VISIBLE CLINICAL BENEFITS      */}
         {/* ========================================== */}
-        <section id="results-section" className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center bg-white/70 backdrop-blur-md rounded-[2.5rem] border border-[#F4E3DD] p-8 md:p-14 shadow-[0_15px_50px_rgba(232,109,81,0.03)] overflow-hidden relative">
+        <section id="results-section" className="scroll-mt-24 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center bg-white/70 backdrop-blur-md rounded-[2.5rem] border border-[#F4E3DD] p-8 md:p-14 shadow-[0_15px_50px_rgba(232,109,81,0.03)] overflow-hidden relative">
           
           {/* Glass background spotlight */}
           <div className="absolute top-[-30%] right-[-10%] w-[500px] h-[500px] rounded-full bg-[#FCE6DF]/40 blur-[80px] pointer-events-none" />
@@ -2795,7 +2812,7 @@ export default function PontBrandPage({ onClose }: PontBrandPageProps) {
         {/* ========================================== */}
         {/* SECTION 4: SKINCARE CONSULTATION (QUIZ!)  */}
         {/* ========================================== */}
-        <section id="consultation-section" className="bg-[#FFF4F0] border border-[#F4E3DD] rounded-[2.5rem] overflow-hidden shadow-[0_15px_45px_rgba(232,109,81,0.02)] grid grid-cols-1 lg:grid-cols-12">
+        <section id="consultation-section" className="scroll-mt-24 bg-[#FFF4F0] border border-[#F4E3DD] rounded-[2.5rem] overflow-hidden shadow-[0_15px_45px_rgba(232,109,81,0.02)] grid grid-cols-1 lg:grid-cols-12">
           
           {/* Left Consultation Brand Intro Column */}
           <div className="lg:col-span-5 bg-gradient-to-br from-[#FEF2EE] to-[#FFF6F3] p-8 md:p-12 border-r border-[#F3E2DD] flex flex-col justify-between">

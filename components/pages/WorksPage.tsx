@@ -4,6 +4,7 @@ import { WORK_ITEMS, CATEGORIES } from '../../constants';
 import { WorkItem, PageState } from '../../types';
 import GlowingFooter from '../GlowingFooter';
 import LoaderLab from '../LoaderLab';
+import { BlurFade } from '../ui/blur-fade';
 
 interface WorksPageProps {
   onNavigate?: (page: PageState) => void;
@@ -23,13 +24,17 @@ const WorksPage: React.FC<WorksPageProps> = ({ onNavigate }) => {
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-16 gap-8">
         <div>
-          <h1 className="text-5xl md:text-6xl font-orbitron font-bold mb-4">作品集类别</h1>
-          <p className="text-gray-400 font-rajdhani max-w-md text-lg">
-            精选项目集合，按类别分类。点击卡片查看详细数据。
-          </p>
+          <BlurFade delay={0.05} duration={0.6}>
+            <h1 className="text-5xl md:text-6xl font-orbitron font-bold mb-4">作品集类别</h1>
+          </BlurFade>
+          <BlurFade delay={0.15} duration={0.6}>
+            <p className="text-gray-400 font-rajdhani max-w-md text-lg">
+              精选项目集合，按类别分类。点击卡片查看详细数据。
+            </p>
+          </BlurFade>
         </div>
         
-        <div className="flex flex-wrap gap-3 bg-white/5 p-1.5 rounded-full backdrop-blur-md border border-white/10 liquid-glass">
+        <BlurFade delay={0.25} duration={0.6} className="flex flex-wrap gap-3 bg-white/5 p-1.5 rounded-full backdrop-blur-md border border-white/10 liquid-glass">
           {CATEGORIES.map(cat => (
             <button
               key={cat}
@@ -43,7 +48,7 @@ const WorksPage: React.FC<WorksPageProps> = ({ onNavigate }) => {
               {cat}
             </button>
           ))}
-        </div>
+        </BlurFade>
       </div>
 
       {/* Grid */}
@@ -70,13 +75,15 @@ const WorksPage: React.FC<WorksPageProps> = ({ onNavigate }) => {
             
             <div className="px-2 pb-2 mt-auto">
               <div className="flex flex-col">
-                 <h3 className="text-xl font-bold font-rajdhani text-white mb-1 transition-all duration-500 group-hover:text-neon-cyan group-hover:-translate-y-0.5">
-                    {work.title}
-                 </h3>
-                 <div className="flex justify-between items-center transform translate-y-2 opacity-60 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 delay-75">
+                 <BlurFade inView delay={0.05}>
+                   <h3 className="text-xl font-bold font-rajdhani text-white mb-1 transition-all duration-500 group-hover:text-neon-cyan group-hover:-translate-y-0.5">
+                      {work.title}
+                   </h3>
+                 </BlurFade>
+                 <BlurFade inView delay={0.1} className="flex justify-between items-center transform translate-y-2 opacity-60 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 delay-75">
                     <p className="text-sm text-gray-500 font-rajdhani group-hover:text-gray-300 transition-colors">{work.category}</p>
                     <span className="text-xs text-gray-600 font-orbitron group-hover:text-white transition-colors">{work.year}</span>
-                 </div>
+                 </BlurFade>
               </div>
             </div>
           </div>

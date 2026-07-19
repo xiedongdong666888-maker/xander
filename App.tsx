@@ -82,9 +82,9 @@ const App: React.FC = () => {
   const renderPage = () => {
     switch (currentPage) {
       case PageState.COVER:
-        return <CoverPage onEnter={() => handleNavigate(PageState.HOME)} />;
+        return <CoverPage onEnter={() => handleNavigate(PageState.HOME)} isExiting={isTransitioning} />;
       case PageState.HOME:
-        return <HomePage onNavigate={handleNavigate} />;
+        return <HomePage onNavigate={handleNavigate} isTransitioning={isTransitioning} />;
       case PageState.WORKS:
         return <WorksPage onNavigate={handleNavigate} />;
       case PageState.CATALOG:
@@ -104,7 +104,7 @@ const App: React.FC = () => {
       {currentPage === PageState.COVER ? (
         <PhosphorBackground />
       ) : currentPage === PageState.HOME ? (
-        <HomeVideoBackground />
+        <HomeVideoBackground active={currentPage === PageState.HOME} />
       ) : (
         <>
           <CosmicBackground />
