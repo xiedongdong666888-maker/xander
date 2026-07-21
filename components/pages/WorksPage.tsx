@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, ArrowUpRight, ArrowRight, Play, ZoomIn } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { WORK_ITEMS, CATEGORIES } from '../../constants';
 import { WorkItem, PageState } from '../../types';
 import GlowingFooter from '../GlowingFooter';
 import LoaderLab from '../LoaderLab';
 import { BlurFade } from '../ui/blur-fade';
+import PhotographyPage from './PhotographyPage';
 
 interface WorksPageProps {
   onNavigate?: (page: PageState) => void;
@@ -13,6 +15,103 @@ interface WorksPageProps {
 const WorksPage: React.FC<WorksPageProps> = ({ onNavigate }) => {
   const [selectedCategory, setSelectedCategory] = useState('全部');
   const [selectedWork, setSelectedWork] = useState<WorkItem | null>(null);
+  const [transitionState, setTransitionState] = useState<'idle' | 'entering' | 'active' | 'exiting'>('idle');
+  const [clickedRect, setClickedRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+  const [targetRect, setTargetRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+
+  const handleSelectWork = (work: WorkItem) => {
+    if (transitionState !== 'idle') return;
+    const imgEl = document.getElementById(`card-img-works-${work.id}`);
+    if (imgEl) {
+      const rect = imgEl.getBoundingClientRect();
+      setClickedRect({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height
+      });
+      setTransitionState('entering');
+    } else {
+      setTransitionState('active');
+    }
+    setSelectedWork(work);
+    document.body.style.overflow = 'hidden';
+  };
+
+  const handleCloseWork = () => {
+    if (transitionState !== 'active') return;
+    if (selectedWork) {
+      const imgEl = document.getElementById(`card-img-works-${selectedWork.id}`);
+      if (imgEl) {
+        const rect = imgEl.getBoundingClientRect();
+        setClickedRect({
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height
+        });
+      }
+    }
+    setTransitionState('exiting');
+  };
+
+  useEffect(() => {
+    if (transitionState === 'entering' && selectedWork) {
+      const timer = setTimeout(() => {
+        const targetEl = document.getElementById(`detail-media-works-${selectedWork.id}`);
+        if (targetEl) {
+          const rect = targetEl.getBoundingClientRect();
+          setTargetRect({
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height
+          });
+        } else {
+          setTransitionState('active');
+        }
+      }, 30);
+      return () => clearTimeout(timer);
+    }
+  }, [transitionState, selectedWork]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleCloseWork();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [transitionState, selectedWork]);
+
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
+  const detailStaggerVariants = {
+    hidden: { opacity: 0, x: -20 },
+    visible: (i: number) => ({
+      opacity: 1,
+      x: 0,
+      transition: {
+        delay: i * 0.1,
+        duration: 0.65,
+        ease: [0.16, 1, 0.3, 1]
+      }
+    }),
+    exit: {
+      opacity: 0,
+      x: 15,
+      transition: {
+        duration: 0.3,
+        ease: 'easeIn'
+      }
+    }
+  };
+
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   const filteredWorks = selectedCategory === '全部'
@@ -56,11 +155,12 @@ const WorksPage: React.FC<WorksPageProps> = ({ onNavigate }) => {
         {filteredWorks.map((work) => (
           <div 
             key={work.id}
-            onClick={() => setSelectedWork(work)}
+            onClick={() => handleSelectWork(work)}
             className="liquid-glass rounded-3xl p-3 cursor-pointer group flex flex-col interactive transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_15px_40px_rgba(41,151,255,0.15)] hover:border-white/30"
           >
             <div className="aspect-square rounded-2xl overflow-hidden relative mb-4 bg-gray-900">
               <img 
+                id={`card-img-works-${work.id}`}
                 src={work.imageUrl} 
                 alt={work.title} 
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 group-hover:brightness-110" 
@@ -91,56 +191,104 @@ const WorksPage: React.FC<WorksPageProps> = ({ onNavigate }) => {
       </div>
 
       {/* High-End Editorial Modal Layout */}
-      {selectedWork && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-6 bg-black/90 backdrop-blur-2xl animate-in fade-in duration-300">
-          <div className="w-full md:max-w-7xl h-full md:h-[90vh] bg-[#050508] md:rounded-[2rem] border-0 md:border border-white/10 relative flex flex-col md:flex-row overflow-hidden shadow-2xl">
-            
-            {/* Close Button - Floating */}
-            <button 
-              onClick={() => setSelectedWork(null)}
-              className="absolute top-6 right-6 z-50 w-12 h-12 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white hover:text-black transition-all border border-white/10 interactive group"
+      <AnimatePresence>
+        {selectedWork && (
+          selectedWork.id === '11' ? (
+            <PhotographyPage onClose={() => {
+              setSelectedWork(null);
+              setTransitionState('idle');
+              document.body.style.overflow = '';
+            }} />
+          ) : (
+            <motion.div 
+              initial={{ opacity: 0 }}
+            animate={{ 
+              opacity: transitionState === 'exiting' ? 0 : 1,
+            }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.65, ease: 'easeInOut' }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-6 bg-black/90 backdrop-blur-2xl"
+          >
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ 
+                opacity: transitionState === 'exiting' ? 0 : 1,
+              }}
+              transition={{ duration: 0.5 }}
+              className="w-full md:max-w-7xl h-full md:h-[90vh] bg-[#050508] md:rounded-[2rem] border-0 md:border border-white/10 relative flex flex-col md:flex-row overflow-hidden shadow-2xl"
             >
-              <X size={20} className="group-hover:rotate-90 transition-transform duration-300" />
-            </button>
-
-            {/* Left Panel: Info */}
-            <div className="w-full md:w-[35%] lg:w-[30%] h-auto md:h-full bg-[#050508] border-b md:border-b-0 md:border-r border-white/10 p-8 md:p-12 flex flex-col overflow-y-auto relative z-20">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-neon-cyan via-purple-500 to-transparent opacity-50"></div>
               
-              <div className="mb-auto">
-                <div className="flex items-center gap-3 mb-8">
+              {/* Close Button - Floating */}
+              <button 
+                onClick={handleCloseWork}
+                className="absolute top-6 right-6 z-50 w-12 h-12 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white hover:text-black transition-all border border-white/10 interactive group"
+              >
+                <X size={20} className="group-hover:rotate-90 transition-transform duration-300" />
+              </button>
+
+              {/* Left Panel: Info */}
+              <div className="w-full md:w-[35%] lg:w-[30%] h-auto md:h-full bg-[#050508] border-b md:border-b-0 md:border-r border-white/10 p-8 md:p-12 flex flex-col overflow-y-auto relative z-20">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-neon-cyan via-purple-500 to-transparent opacity-50"></div>
+                
+                <div className="mb-auto">
+                  <motion.div 
+                    custom={0}
+                    initial="hidden"
+                    animate={transitionState === 'active' ? 'visible' : 'hidden'}
+                    variants={detailStaggerVariants}
+                    className="flex items-center gap-3 mb-8"
+                  >
                    <span className="px-3 py-1 rounded-full border border-neon-cyan/30 text-neon-cyan text-[10px] font-orbitron tracking-widest uppercase bg-neon-cyan/5">
                       {selectedWork.category}
                    </span>
                    <span className="h-[1px] flex-1 bg-white/10"></span>
-                </div>
+                  </motion.div>
 
-                <h2 className="text-4xl md:text-5xl lg:text-6xl font-black font-orbitron text-white leading-tight mb-8 drop-shadow-lg">
-                  {selectedWork.title}
-                </h2>
+                  <motion.h2 
+                    custom={1}
+                    initial="hidden"
+                    animate={transitionState === 'active' ? 'visible' : 'hidden'}
+                    variants={detailStaggerVariants}
+                    className="text-4xl md:text-5xl lg:text-6xl font-black font-orbitron text-white leading-tight mb-8 drop-shadow-lg"
+                  >
+                    {selectedWork.title}
+                  </motion.h2>
 
-                <p className="text-gray-400 font-rajdhani text-lg leading-relaxed mb-8">
-                  {selectedWork.description}
-                </p>
-                
-                {/* Metadata Grid */}
-                <div className="grid grid-cols-2 gap-y-6 gap-x-4 py-8 border-t border-white/10">
-                    <div>
-                        <span className="block text-gray-600 text-[10px] font-orbitron uppercase mb-1 tracking-widest">YEAR</span>
-                        <span className="font-rajdhani text-lg text-white">{selectedWork.year}</span>
-                    </div>
-                    <div>
-                        <span className="block text-gray-600 text-[10px] font-orbitron uppercase mb-1 tracking-widest">ID</span>
-                        <span className="font-rajdhani text-lg text-white">#{selectedWork.id.padStart(3, '0')}</span>
-                    </div>
-                    <div>
-                        <span className="block text-gray-600 text-[10px] font-orbitron uppercase mb-1 tracking-widest">CLIENT</span>
-                        <span className="font-rajdhani text-lg text-white">PONT Inc.</span>
-                    </div>
-                    <div>
-                        <span className="block text-gray-600 text-[10px] font-orbitron uppercase mb-1 tracking-widest">ROLE</span>
-                        <span className="font-rajdhani text-lg text-white">Art Direction</span>
-                    </div>
+                  <motion.p 
+                    custom={2}
+                    initial="hidden"
+                    animate={transitionState === 'active' ? 'visible' : 'hidden'}
+                    variants={detailStaggerVariants}
+                    className="text-gray-400 font-rajdhani text-lg leading-relaxed mb-8"
+                  >
+                    {selectedWork.description}
+                  </motion.p>
+                  
+                  {/* Metadata Grid */}
+                  <motion.div 
+                    custom={3}
+                    initial="hidden"
+                    animate={transitionState === 'active' ? 'visible' : 'hidden'}
+                    variants={detailStaggerVariants}
+                    className="grid grid-cols-2 gap-y-6 gap-x-4 py-8 border-t border-white/10"
+                  >
+                      <div>
+                          <span className="block text-gray-600 text-[10px] font-orbitron uppercase mb-1 tracking-widest">YEAR</span>
+                          <span className="font-rajdhani text-lg text-white">{selectedWork.year}</span>
+                      </div>
+                      <div>
+                          <span className="block text-gray-600 text-[10px] font-orbitron uppercase mb-1 tracking-widest">ID</span>
+                          <span className="font-rajdhani text-lg text-white">#{selectedWork.id.padStart(3, '0')}</span>
+                      </div>
+                      <div>
+                          <span className="block text-gray-600 text-[10px] font-orbitron uppercase mb-1 tracking-widest">CLIENT</span>
+                          <span className="font-rajdhani text-lg text-white">PONT Inc.</span>
+                      </div>
+                      <div>
+                          <span className="block text-gray-600 text-[10px] font-orbitron uppercase mb-1 tracking-widest">ROLE</span>
+                          <span className="font-rajdhani text-lg text-white">Art Direction</span>
+                      </div>
+                  </motion.div>
                 </div>
               </div>
 
@@ -160,7 +308,7 @@ const WorksPage: React.FC<WorksPageProps> = ({ onNavigate }) => {
                ) : (
                  <>
                    <div 
-                      className="w-full relative group cursor-zoom-in overflow-hidden"
+                      id={`detail-media-works-${selectedWork.id}`} style={{ opacity: transitionState === 'active' ? 1 : 0 }} className="w-full relative group cursor-zoom-in overflow-hidden"
                       onClick={() => setZoomedImage(selectedWork.imageUrl)}
                    >
                       <img 

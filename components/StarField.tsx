@@ -28,10 +28,25 @@ const StarField: React.FC = () => {
     }
 
     let animationFrameId: number;
+    let mouseX = 0;
+    let mouseY = 0;
+    let targetMouseX = 0;
+    let targetMouseY = 0;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      targetMouseX = (e.clientX / window.innerWidth) - 0.5;
+      targetMouseY = (e.clientY / window.innerHeight) - 0.5;
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
 
     const animate = () => {
       // Clear with slight transparency for trail effect if desired, but here we want clean
       ctx.clearRect(0, 0, width, height);
+
+      // Smoothly lerp mouse values for buttery smooth movement
+      mouseX += (targetMouseX - mouseX) * 0.08;
+      mouseY += (targetMouseY - mouseY) * 0.08;
 
       // Scroll offset for parallax
       const scrollY = window.scrollY;
@@ -42,7 +57,13 @@ const StarField: React.FC = () => {
 
         // Parallax offset Y based on scroll
         const parallaxY = (scrollY * 0.1 * (1/star.z)); 
-        let y = star.y - parallaxY;
+
+        // Mouse parallax offset based on depth (z factor)
+        const mouseParallaxX = mouseX * 45 * (1 / star.z);
+        const mouseParallaxY = mouseY * 45 * (1 / star.z);
+
+        const x = star.x - mouseParallaxX;
+        let y = star.y - parallaxY - mouseParallaxY;
 
         // Wrap around logic needs to account for parallax shift visual
         // For simplicity in this loop, we just draw based on calculated position
@@ -57,7 +78,7 @@ const StarField: React.FC = () => {
         
         ctx.beginPath();
         ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
-        ctx.arc(star.x, y % height, star.size, 0, Math.PI * 2);
+        ctx.arc((x + width) % width, (y + height) % height, star.size, 0, Math.PI * 2);
         ctx.fill();
       });
 
@@ -75,6 +96,7 @@ const StarField: React.FC = () => {
     animate();
 
     return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(animationFrameId);
     };

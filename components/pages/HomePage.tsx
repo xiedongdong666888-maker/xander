@@ -48,6 +48,7 @@ const TimelineCard: React.FC<TimelineCardProps> = ({ work, onClick }) => {
       className="group relative aspect-[16/10] w-full rounded-2xl overflow-hidden liquid-glass border border-white/10 interactive cursor-none shadow-xl transition-all duration-500 hover:shadow-neon-cyan/20 hover:scale-[1.01]"
     >
       <img 
+        id={`card-img-home-${work.id}`}
         src={work.imageUrl} 
         alt={work.title} 
         referrerPolicy="no-referrer"
@@ -110,6 +111,104 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate, isTransitioning }) => {
 
   const [activeFilter, setActiveFilter] = useState<'全部' | '商业设计' | '比赛精选' | '其他能力'>('全部');
   const [selectedPreview, setSelectedPreview] = useState<WorkItem | null>(null);
+  const [transitionState, setTransitionState] = useState<'idle' | 'entering' | 'active' | 'exiting'>('idle');
+  const [clickedRect, setClickedRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+  const [targetRect, setTargetRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+
+  const handleSelectWork = (work: WorkItem) => {
+    if (transitionState !== 'idle') return;
+    const imgEl = document.getElementById(`card-img-home-${work.id}`);
+    if (imgEl) {
+      const rect = imgEl.getBoundingClientRect();
+      setClickedRect({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height
+      });
+      setTransitionState('entering');
+    } else {
+      setTransitionState('active');
+    }
+    setSelectedPreview(work);
+    document.body.style.overflow = 'hidden';
+  };
+
+  const handleCloseWork = () => {
+    if (transitionState !== 'active') return;
+    if (selectedPreview) {
+      const imgEl = document.getElementById(`card-img-home-${selectedPreview.id}`);
+      if (imgEl) {
+        const rect = imgEl.getBoundingClientRect();
+        setClickedRect({
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height
+        });
+      }
+    }
+    setTransitionState('exiting');
+  };
+
+  useEffect(() => {
+    if (transitionState === 'entering' && selectedPreview) {
+      // Find the element; allow a tiny animation tick frame if needed
+      const timer = setTimeout(() => {
+        const targetEl = document.getElementById(`detail-media-home-${selectedPreview.id}`);
+        if (targetEl) {
+          const rect = targetEl.getBoundingClientRect();
+          setTargetRect({
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height
+          });
+        } else {
+          setTransitionState('active');
+        }
+      }, 30);
+      return () => clearTimeout(timer);
+    }
+  }, [transitionState, selectedPreview]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleCloseWork();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [transitionState, selectedPreview]);
+
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
+  const detailStaggerVariants = {
+    hidden: { opacity: 0, y: 25 },
+    visible: (i: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: {
+        delay: i * 0.1,
+        duration: 0.7,
+        ease: [0.16, 1, 0.3, 1]
+      }
+    }),
+    exit: {
+      opacity: 0,
+      y: -15,
+      transition: {
+        duration: 0.35,
+        ease: 'easeIn'
+      }
+    }
+  };
+
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   // Determine categories to render on the timeline
@@ -328,7 +427,7 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate, isTransitioning }) => {
                           <div className="absolute left-6 md:left-1/2 top-1.5 md:top-1/2 -translate-y-1/2 -translate-x-1/2 z-20">
                             <motion.div 
                               whileHover={{ scale: 1.3 }}
-                              onClick={() => setSelectedPreview(work)}
+                              onClick={() => handleSelectWork(work)}
                               className={`w-6 h-6 rounded-full bg-[#030014] border-2 flex items-center justify-center cursor-none shadow-[0_0_12px_rgba(41,151,255,0.4)] transition-all ${
                                 work.category === '商业设计' ? 'border-neon-cyan shadow-neon-cyan/40' :
                                 work.category === '比赛精选' ? 'border-neon-purple shadow-neon-purple/40' :
@@ -346,7 +445,7 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate, isTransitioning }) => {
                           {/* Even items: image card on the left, typography on the right */}
                           {/* Odd items: image card on the right, typography on the left */}
                           <div className={`w-full ${isEven ? 'order-1 md:order-1' : 'order-1 md:order-2'}`}>
-                            <TimelineCard work={work} onClick={() => setSelectedPreview(work)} />
+                            <TimelineCard work={work} onClick={() => handleSelectWork(work)} />
                           </div>
 
                           {/* Content details side panel */}
@@ -379,7 +478,7 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate, isTransitioning }) => {
                               
                               <BlurFade inView delay={0.12}>
                                 <h3 
-                                  onClick={() => setSelectedPreview(work)}
+                                  onClick={() => handleSelectWork(work)}
                                   className="text-2xl font-bold font-orbitron text-white hover:text-neon-cyan transition-colors cursor-none interactive leading-tight mb-4 inline-block"
                                 >
                                   {work.title}
@@ -396,7 +495,7 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate, isTransitioning }) => {
 
                               <BlurFade inView delay={0.28} className={`flex gap-4 items-center ${isEven ? 'justify-start' : 'justify-start md:justify-end'}`}>
                                 <button 
-                                  onClick={() => setSelectedPreview(work)}
+                                  onClick={() => handleSelectWork(work)}
                                   className="group/btn relative px-5 py-2.5 bg-white/5 border border-white/10 hover:border-neon-cyan/50 hover:bg-neon-cyan/5 text-xs text-white hover:text-neon-cyan font-orbitron flex items-center gap-2 tracking-widest transition-all duration-300 cursor-none interactive rounded-lg"
                                 >
                                   <span>查看详情 / RETRIEVE DETAILS</span>
@@ -423,22 +522,26 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate, isTransitioning }) => {
         {selectedPreview && (
           <motion.div 
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            animate={{ 
+              opacity: transitionState === 'exiting' ? 0 : 1,
+            }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/95 backdrop-blur-xl z-50 overflow-y-auto cursor-none py-12 px-6 md:px-24 flex justify-center"
+            transition={{ duration: 0.65, ease: 'easeInOut' }}
+            className="fixed inset-0 bg-gradient-to-br from-[#120a2b]/95 via-[#050508]/98 to-[#1a0f35]/95 backdrop-blur-2xl z-50 overflow-y-auto cursor-none py-12 px-6 md:px-24 flex justify-center"
           >
             {/* Modal Box */}
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 30 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 30 }}
-              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              initial={{ opacity: 0 }}
+              animate={{ 
+                opacity: transitionState === 'exiting' ? 0 : 1,
+              }}
+              transition={{ duration: 0.5 }}
               className="relative w-full max-w-5xl rounded-3xl bg-[#030014]/40 border border-white/10 p-6 md:p-12 shadow-2xl h-fit overflow-visible my-auto"
             >
               
               {/* Back button */}
               <button 
-                onClick={() => setSelectedPreview(null)}
+                onClick={handleCloseWork}
                 className="absolute top-6 right-6 p-4 rounded-full bg-white/5 border border-white/10 hover:bg-neon-cyan hover:text-black hover:border-neon-cyan text-white transition-all duration-300 cursor-none interactive z-30 shadow-lg"
               >
                 <X size={20} />
@@ -448,22 +551,46 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate, isTransitioning }) => {
                 
                 {/* Meta details */}
                 <div className="lg:col-span-5 flex flex-col justify-center">
-                  <div className="flex items-center gap-3 mb-6">
+                  <motion.div 
+                    custom={0}
+                    initial="hidden"
+                    animate={transitionState === 'active' ? 'visible' : 'hidden'}
+                    variants={detailStaggerVariants}
+                    className="flex items-center gap-3 mb-6"
+                  >
                     <span className="px-3 py-1 rounded-full border border-neon-cyan/30 text-neon-cyan text-[10px] font-orbitron tracking-widest uppercase bg-neon-cyan/5">
                       {selectedPreview.category}
                     </span>
                     <span className="font-mono text-xs text-gray-500">#{selectedPreview.id.padStart(3, '0')}</span>
-                  </div>
+                  </motion.div>
 
-                  <h2 className="text-4xl md:text-5xl font-black font-orbitron text-white leading-tight mb-8">
+                  <motion.h2 
+                    custom={1}
+                    initial="hidden"
+                    animate={transitionState === 'active' ? 'visible' : 'hidden'}
+                    variants={detailStaggerVariants}
+                    className="text-4xl md:text-5xl font-black font-orbitron text-white leading-tight mb-8"
+                  >
                     {selectedPreview.title}
-                  </h2>
+                  </motion.h2>
                   
-                  <p className="text-gray-400 font-rajdhani text-lg leading-relaxed mb-8">
+                  <motion.p 
+                    custom={2}
+                    initial="hidden"
+                    animate={transitionState === 'active' ? 'visible' : 'hidden'}
+                    variants={detailStaggerVariants}
+                    className="text-gray-400 font-rajdhani text-lg leading-relaxed mb-8"
+                  >
                     {selectedPreview.description}
-                  </p>
+                  </motion.p>
 
-                  <div className="grid grid-cols-2 gap-6 p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur">
+                  <motion.div 
+                    custom={3}
+                    initial="hidden"
+                    animate={transitionState === 'active' ? 'visible' : 'hidden'}
+                    variants={detailStaggerVariants}
+                    className="grid grid-cols-2 gap-6 p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur"
+                  >
                     <div>
                       <span className="block text-gray-500 text-[10px] font-orbitron uppercase mb-1 tracking-widest">Time Line Track</span>
                       <span className="font-orbitron font-bold text-lg text-white">{selectedPreview.year}</span>
@@ -472,51 +599,67 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate, isTransitioning }) => {
                       <span className="block text-gray-500 text-[10px] font-orbitron uppercase mb-1 tracking-widest">Aesthetic Tag</span>
                       <span className="font-rajdhani text-lg text-neon-cyan font-bold">{selectedPreview.category}</span>
                     </div>
-                  </div>
+                  </motion.div>
                 </div>
 
                 {/* Media panel (Hero, embeds, details) */}
                 <div className="lg:col-span-7 space-y-6">
                   
-                  {/* Embed Code check */}
-                  {selectedPreview.embeds && selectedPreview.embeds.map((embedCode, idx) => (
-                    <div key={idx} className="w-full relative aspect-video rounded-2xl overflow-hidden border border-white/10 bg-[#0A0A0A]" dangerouslySetInnerHTML={{ __html: embedCode }} />
-                  ))}
+                  {/* Primary Media Item Container for measurement */}
+                  <motion.div 
+                    custom={4}
+                    initial="hidden"
+                    animate={transitionState === 'active' ? 'visible' : 'hidden'}
+                    variants={detailStaggerVariants}
+                    id={`detail-media-home-${selectedPreview.id}`}
+                    style={{ opacity: transitionState === 'active' ? 1 : 0 }}
+                    className="w-full aspect-video relative rounded-2xl overflow-hidden border border-white/10 bg-[#0A0A0A]"
+                  >
+                    {/* Embed Code check */}
+                    {selectedPreview.embeds && selectedPreview.embeds.map((embedCode, idx) => (
+                      <div key={idx} className="w-full h-full absolute inset-0" dangerouslySetInnerHTML={{ __html: embedCode }} />
+                    ))}
 
-                  {/* Standard Video fallback check */}
-                  {(selectedPreview.videoUrls || (selectedPreview.videoUrl ? [selectedPreview.videoUrl] : [])).map((url, idx) => (
-                    <div key={idx} className="w-full relative aspect-video rounded-2xl overflow-hidden border border-white/10 bg-[#0A0A0A]">
-                      <video 
-                        src={url} 
-                        controls 
-                        playsInline
-                        className="w-full h-full object-cover" 
-                      />
-                      <div className="absolute top-4 left-4 text-[10px] font-orbitron text-neon-cyan bg-black/80 px-2 py-1 rounded backdrop-blur border border-neon-cyan/20">
-                        MOTION GRAPHIC RECORD
+                    {/* Standard Video fallback check */}
+                    {!selectedPreview.embeds && (selectedPreview.videoUrls || (selectedPreview.videoUrl ? [selectedPreview.videoUrl] : [])).map((url, idx) => (
+                      <div key={idx} className="w-full h-full absolute inset-0">
+                        <video 
+                          src={url} 
+                          controls 
+                          playsInline
+                          className="w-full h-full object-cover" 
+                        />
+                        <div className="absolute top-4 left-4 text-[10px] font-orbitron text-neon-cyan bg-black/80 px-2 py-1 rounded backdrop-blur border border-neon-cyan/20">
+                          MOTION GRAPHIC RECORD
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
 
-                  {/* Cover fallback check if no videos present */}
-                  {!selectedPreview.embeds && !selectedPreview.videoUrl && !selectedPreview.videoUrls && (
-                    <div 
-                      onClick={() => setZoomedImage(selectedPreview.imageUrl)}
-                      className="w-full aspect-video rounded-2xl overflow-hidden cursor-zoom-in border border-white/10 relative group"
-                    >
-                      <img 
-                        src={selectedPreview.imageUrl} 
-                        alt={selectedPreview.title} 
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                      />
-                      <div className="absolute inset-0 bg-black/30 group-hover:bg-black/0 transition-colors" />
-                    </div>
-                  )}
+                    {/* Cover fallback check if no videos/embeds present */}
+                    {!selectedPreview.embeds && !selectedPreview.videoUrl && !selectedPreview.videoUrls && (
+                      <div 
+                        onClick={() => setZoomedImage(selectedPreview.imageUrl)}
+                        className="w-full h-full cursor-zoom-in relative group"
+                      >
+                        <img 
+                          src={selectedPreview.imageUrl} 
+                          alt={selectedPreview.title} 
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                        />
+                        <div className="absolute inset-0 bg-black/30 group-hover:bg-black/0 transition-colors" />
+                      </div>
+                    )}
+                  </motion.div>
 
                   {/* Sub-galleries scroll */}
                   {selectedPreview.detailImages && selectedPreview.detailImages.length > 0 && (
-                    <div>
+                    <motion.div
+                      custom={5}
+                      initial="hidden"
+                      animate={transitionState === 'active' ? 'visible' : 'hidden'}
+                      variants={detailStaggerVariants}
+                    >
                       <span className="block text-gray-400 font-orbitron text-xs tracking-widest mb-4">GALLERY ARTIFACTS ({selectedPreview.detailImages.length})</span>
                       <div className={selectedPreview.id === '11' ? "grid grid-cols-3 gap-3" : "grid grid-cols-2 gap-3"}>
                         {selectedPreview.detailImages.map((img, idx) => (
@@ -535,7 +678,7 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate, isTransitioning }) => {
                           </div>
                         ))}
                       </div>
-                    </div>
+                    </motion.div>
                   )}
 
                 </div>
@@ -545,6 +688,48 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate, isTransitioning }) => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 2.5 SHARED ELEMENT FLIP LAYER */}
+      {selectedPreview && clickedRect && targetRect && (transitionState === 'entering' || transitionState === 'exiting') && (
+        <div className="fixed inset-0 z-[9999] pointer-events-none select-none">
+          <motion.img
+            src={selectedPreview.imageUrl}
+            initial={{
+              top: transitionState === 'entering' ? clickedRect.top : targetRect.top,
+              left: transitionState === 'entering' ? clickedRect.left : targetRect.left,
+              width: transitionState === 'entering' ? clickedRect.width : targetRect.width,
+              height: transitionState === 'entering' ? clickedRect.height : targetRect.height,
+              borderRadius: transitionState === 'entering' ? 16 : 24,
+            }}
+            animate={{
+              top: transitionState === 'entering' ? targetRect.top : clickedRect.top,
+              left: transitionState === 'entering' ? targetRect.left : clickedRect.left,
+              width: transitionState === 'entering' ? targetRect.width : clickedRect.width,
+              height: transitionState === 'entering' ? targetRect.height : clickedRect.height,
+              borderRadius: transitionState === 'entering' ? 24 : 16,
+            }}
+            transition={{
+              duration: 0.85,
+              ease: [0.22, 1, 0.36, 1], // Premium non-bouncy curve
+            }}
+            onAnimationComplete={() => {
+              if (transitionState === 'entering') {
+                setTransitionState('active');
+              } else if (transitionState === 'exiting') {
+                setTransitionState('idle');
+                setSelectedPreview(null);
+                setClickedRect(null);
+                setTargetRect(null);
+                document.body.style.overflow = '';
+              }
+            }}
+            style={{
+              position: 'fixed',
+              objectFit: 'cover',
+            }}
+          />
+        </div>
+      )}
 
       {/* 2.4 DETAIL ZOOM / FULLSCREEN LAYER IMMERSIVE OVERLAY */}
       <AnimatePresence>

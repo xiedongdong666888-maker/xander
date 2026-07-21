@@ -29,8 +29,8 @@ export const HomeVideoBackground: React.FC<HomeVideoBackgroundProps> = ({ active
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, [mouseX, mouseY]);
 
-  const videoX = useTransform(springX, [-0.5, 0.5], [-15, 15]);
-  const videoY = useTransform(springY, [-0.5, 0.5], [-15, 15]);
+  const videoX = useTransform(springX, [-0.5, 0.5], [-25, 25]);
+  const videoY = useTransform(springY, [-0.5, 0.5], [-25, 25]);
 
   useEffect(() => {
     const video = videoRef.current;

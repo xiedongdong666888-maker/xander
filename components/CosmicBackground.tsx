@@ -1,9 +1,30 @@
 
-import React from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import React, { useEffect } from 'react';
+import { motion, useScroll, useTransform, useMotionValue, useSpring } from 'framer-motion';
 
 const CosmicBackground: React.FC = () => {
   const { scrollYProgress } = useScroll();
+
+  // Mouse interaction state with smooth spring physics
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  const springX = useSpring(mouseX, { stiffness: 45, damping: 15 });
+  const springY = useSpring(mouseY, { stiffness: 45, damping: 15 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const x = (e.clientX / window.innerWidth) - 0.5;
+      const y = (e.clientY / window.innerHeight) - 0.5;
+      mouseX.set(x);
+      mouseY.set(y);
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, [mouseX, mouseY]);
+
+  const backgroundX = useTransform(springX, [-0.5, 0.5], [-25, 25]);
+  const backgroundY = useTransform(springY, [-0.5, 0.5], [-25, 25]);
 
   // 1. Dynamic Background Color Interpolation
   // Map scroll progress to a rich color palette:
@@ -30,7 +51,7 @@ const CosmicBackground: React.FC = () => {
 
   return (
     <motion.div 
-      style={{ backgroundColor }}
+      style={{ backgroundColor, x: backgroundX, y: backgroundY, scale: 1.05 }}
       className="fixed inset-0 overflow-hidden pointer-events-none -z-20 transition-colors duration-700 ease-out"
     >
       {/* 

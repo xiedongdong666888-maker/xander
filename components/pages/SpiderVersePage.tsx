@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useTransform, useMotionValue, useSpring } from 'framer-motion';
 import { X, Volume2, VolumeX, Shield, RefreshCw, Zap, ArrowRight, ExternalLink, Globe, Layers, Cpu, Skull, Calendar, ChevronLeft, ChevronRight, Play, Quote, Pause, SkipForward, Maximize, Download, ShoppingCart, Target, Eye } from 'lucide-react';
 import Hls from 'hls.js';
+import { HoverSlider, HoverSliderImage, HoverSliderImageWrap, TextStaggerHover } from '../ui/animated-slideshow';
 
 const images = [
   'https://i.postimg.cc/3wd3ZLK1/13.png',
@@ -37,6 +38,27 @@ export default function SpiderVersePage({ onClose }: SpiderVersePageProps) {
   const heroSectionRef = useRef<HTMLDivElement>(null);
   const backgroundVideoRef = useRef<HTMLVideoElement>(null);
   const [videoBgLoaded, setVideoBgLoaded] = useState(false);
+
+  // Mouse interaction state with smooth spring physics
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  const springX = useSpring(mouseX, { stiffness: 45, damping: 15 });
+  const springY = useSpring(mouseY, { stiffness: 45, damping: 15 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const x = (e.clientX / window.innerWidth) - 0.5;
+      const y = (e.clientY / window.innerHeight) - 0.5;
+      mouseX.set(x);
+      mouseY.set(y);
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, [mouseX, mouseY]);
+
+  const videoX = useTransform(springX, [-0.5, 0.5], [-35, 35]);
+  const videoY = useTransform(springY, [-0.5, 0.5], [-35, 35]);
 
   // Hook up useScroll with container and target refs
   const { scrollYProgress } = useScroll({
@@ -398,17 +420,15 @@ export default function SpiderVersePage({ onClose }: SpiderVersePageProps) {
               exit={{ opacity: 0, scale: 1.1, filter: "blur(10px)", transition: { duration: 0.6, ease: "easeOut" } }}
               className="absolute inset-0 z-50 flex flex-col items-center justify-between py-12 md:py-16 px-6 bg-black text-white overflow-hidden"
             >
-              {/* Cinematic Full-screen Background Video (Mathematically Perfect Containment, No Cropping) */}
+              {/* Cinematic Full-screen Background Video (Mathematically Perfect Cover, No Black Bars) */}
               <div className="absolute inset-0 z-0 w-full h-full bg-black flex items-center justify-center overflow-hidden pointer-events-none select-none">
-                <div className="relative w-[min(100vw,177.77vh)] h-[min(56.25vw,100vh)]">
-                  <iframe 
-                    src="https://player.mux.com/AmOyIzP7aXwx0179QXy1FyyHgOQj61INtSahvyftWGic?autoplay=true&muted=true&loop=false&controls=false" 
-                    onLoad={() => setVideoLoaded(true)}
-                    className="absolute inset-0 w-full h-full"
-                    allow="autoplay; fullscreen" 
-                    style={{ border: 0, pointerEvents: 'none' }}
-                  />
-                </div>
+                <iframe 
+                  src="https://player.mux.com/AmOyIzP7aXwx0179QXy1FyyHgOQj61INtSahvyftWGic?autoplay=true&muted=true&loop=false&controls=false" 
+                  onLoad={() => setVideoLoaded(true)}
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 min-w-full min-h-full w-[177.77vh] h-[56.25vw]"
+                  allow="autoplay; fullscreen" 
+                  style={{ border: 0, pointerEvents: 'none' }}
+                />
               </div>
 
               {/* Neon Ambient Background Orbs */}
@@ -526,8 +546,9 @@ export default function SpiderVersePage({ onClose }: SpiderVersePageProps) {
                 style={{ opacity: bgOpacity, filter: bgBlur }}
                 className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none z-0"
               >
-                <video
+                <motion.video
                   ref={backgroundVideoRef}
+                  style={{ x: videoX, y: videoY, scale: 1.08 }}
                   className="w-full h-full object-cover select-none pointer-events-none origin-center transition-opacity duration-700"
                   playsInline
                   muted
@@ -583,6 +604,16 @@ export default function SpiderVersePage({ onClose }: SpiderVersePageProps) {
                   </span>
                   <span 
                     onClick={() => {
+                      document.getElementById('poster-section')?.scrollIntoView({ behavior: 'smooth' });
+                      playGlitchSound(260, 'sine', 0.05);
+                    }} 
+                    className="cursor-pointer hover:text-white transition-all hover:translate-y-[-1px]"
+                  >
+                    动态海报
+                  </span>
+
+                  <span 
+                    onClick={() => {
                       document.getElementById('stats-section')?.scrollIntoView({ behavior: 'smooth' });
                       playGlitchSound(240, 'sine', 0.05);
                     }} 
@@ -590,15 +621,7 @@ export default function SpiderVersePage({ onClose }: SpiderVersePageProps) {
                   >
                     数据概览
                   </span>
-                  <span 
-                    onClick={() => {
-                      document.getElementById('gallery-section')?.scrollIntoView({ behavior: 'smooth' });
-                      playGlitchSound(260, 'sine', 0.05);
-                    }} 
-                    className="cursor-pointer hover:text-white transition-all hover:translate-y-[-1px]"
-                  >
-                    设计图库
-                  </span>
+
                   <span 
                     onClick={() => {
                       document.getElementById('storyline-section')?.scrollIntoView({ behavior: 'smooth' });
@@ -788,15 +811,15 @@ export default function SpiderVersePage({ onClose }: SpiderVersePageProps) {
                   {/* Right Column: Detailed Product Profile & Gallery */}
                   <div className="lg:col-span-4 space-y-8 flex flex-col justify-between h-full">
                     <div className="space-y-6">
-                      <span className="text-base md:text-lg font-mono text-red-500 uppercase tracking-[0.3em] font-bold block">
+                      <span className="text-sm md:text-base font-mono text-red-500 uppercase tracking-[0.3em] font-bold block">
                         产品视频
                       </span>
 
-                      <h2 className="text-6xl md:text-7xl lg:text-8xl font-black font-orbitron uppercase text-white tracking-tight leading-none">
+                      <h2 className="text-4xl md:text-5xl lg:text-5xl font-black font-orbitron uppercase text-white tracking-tight leading-none">
                         蜘蛛侠X1
                       </h2>
 
-                      <div className="text-lg md:text-xl font-mono text-[#ff0055] tracking-widest uppercase font-bold">
+                      <div className="text-sm md:text-base font-mono text-[#ff0055] tracking-widest uppercase font-bold">
                         沉浸体验，制胜每一刻
                       </div>
 
@@ -805,18 +828,18 @@ export default function SpiderVersePage({ onClose }: SpiderVersePageProps) {
                       {/* Features Bullet List matching reference */}
                       <div className="space-y-6 text-left">
                         <div className="space-y-2">
-                          <h4 className="text-lg md:text-xl font-bold text-white font-sans uppercase tracking-widest">虚拟7.1环绕声</h4>
-                          <p className="text-sm md:text-base text-slate-400 font-mono tracking-widest uppercase">精准定位，听声辨位</p>
+                          <h4 className="text-sm md:text-base font-bold text-white font-sans uppercase tracking-widest">虚拟7.1环绕声</h4>
+                          <p className="text-[11px] md:text-xs text-slate-400 font-mono tracking-widest uppercase">精准定位，听声辨位</p>
                         </div>
 
                         <div className="space-y-2">
-                          <h4 className="text-lg md:text-xl font-bold text-white font-sans uppercase tracking-widest">低延迟无线</h4>
-                          <p className="text-sm md:text-base text-slate-400 font-mono tracking-widest uppercase">疾速连接，畅快对战</p>
+                          <h4 className="text-sm md:text-base font-bold text-white font-sans uppercase tracking-widest">低延迟无线</h4>
+                          <p className="text-[11px] md:text-xs text-slate-400 font-mono tracking-widest uppercase">疾速连接，畅快对战</p>
                         </div>
 
                         <div className="space-y-2">
-                          <h4 className="text-lg md:text-xl font-bold text-white font-sans uppercase tracking-widest">长效续航</h4>
-                          <p className="text-sm md:text-base text-slate-400 font-mono tracking-widest uppercase">持久陪伴，无惧挑战</p>
+                          <h4 className="text-sm md:text-base font-bold text-white font-sans uppercase tracking-widest">长效续航</h4>
+                          <p className="text-[11px] md:text-xs text-slate-400 font-mono tracking-widest uppercase">持久陪伴，无惧挑战</p>
                         </div>
                       </div>
                     </div>
@@ -841,9 +864,9 @@ export default function SpiderVersePage({ onClose }: SpiderVersePageProps) {
                       </div>
                       <div className="grid grid-cols-3 gap-3">
                         {[
-                          "https://i.postimg.cc/T3hPyMhS/Chat-GPT-Image-2026nian7yue12ri-19-52-59-(2).png",
-                          "https://i.postimg.cc/3xWwy5Ws/Chat-GPT-Image-2026nian7yue12ri-19-52-59-(3).png",
-                          "https://i.postimg.cc/DwmzWk8V/Chat-GPT-Image-2026nian7yue12ri-21-57-34-(3).png"
+                          "https://i.postimg.cc/nrnCL3sM/Chat-GPT-Image-2026nian7yue19ri-21-30-45.png",
+                          "https://i.postimg.cc/5yf6tsHy/Chat-GPT-Image-2026nian7yue19ri-21-30-48.png",
+                          "https://i.postimg.cc/rsqKpfdp/Chat-GPT-Image-2026nian7yue19ri-21-33-10.png"
                         ].map((url, idx) => (
                           <div 
                             key={idx} 
@@ -858,6 +881,141 @@ export default function SpiderVersePage({ onClose }: SpiderVersePageProps) {
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-2">
                               <span className="text-[9px] font-mono text-white tracking-widest uppercase">0{idx + 1}</span>
                             </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* ======================================================== */}
+                {/* SECTION 2.2: IN-EAR EARBUD SHOWCASE (曜蛛耳机 X1)          */}
+                {/* ======================================================== */}
+                <motion.div 
+                  id="earbud-section" 
+                  initial={{ opacity: 0, y: 50 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-10%" }}
+                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                  className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-24 lg:items-stretch items-start text-left pt-24 pb-12 min-h-[50vh] border-t border-white/5 scroll-mt-24"
+                >
+                  {/* Left Column: Earbud Interactive Video Player */}
+                  <div className="lg:col-span-8 relative w-full flex flex-col h-full">
+                    <EarbudVideoPlayer 
+                      isGlobalMuted={isMuted} 
+                      playGlitchSound={playGlitchSound} 
+                    />
+                  </div>
+
+                  {/* Right Column: Detailed Earbud Profile & Gallery */}
+                  <div className="lg:col-span-4 space-y-8 flex flex-col justify-between h-full">
+                    <div className="space-y-6">
+                      <span className="text-sm md:text-base font-mono text-red-500 uppercase tracking-[0.3em] font-bold block">
+                        产品视频
+                      </span>
+
+                      <h2 className="text-4xl md:text-5xl lg:text-5xl font-black font-orbitron uppercase text-white tracking-tight leading-none">
+                        曜蛛耳机 <span className="text-red-500">X1</span>
+                      </h2>
+
+                      <div className="text-sm md:text-base font-mono text-slate-400 tracking-widest uppercase font-bold">
+                        疾速连接，沉浸每一瞬
+                      </div>
+
+                      <div className="w-full h-[1px] bg-white/10 my-6" />
+
+                      {/* Features Bullet List matching reference exactly */}
+                      <div className="space-y-4 text-left">
+                        {/* Bullet 1 */}
+                        <div className="flex items-center gap-4 group cursor-pointer">
+                          <div className="p-2.5 rounded-full border border-red-500/30 bg-red-500/5 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.15)] group-hover:bg-red-500 group-hover:text-black transition-all duration-300 flex items-center justify-center w-10 h-10 shrink-0">
+                            <Zap size={18} />
+                          </div>
+                          <div>
+                            <h4 className="text-sm md:text-base font-bold text-white uppercase tracking-wider">低延迟连接</h4>
+                            <p className="text-[11px] md:text-xs text-slate-400 tracking-wider">声画同步，快人一步</p>
+                          </div>
+                        </div>
+
+                        {/* Bullet 2 */}
+                        <div className="flex items-center gap-4 group cursor-pointer">
+                          <div className="p-2.5 rounded-full border border-cyan-500/30 bg-cyan-500/5 text-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.15)] group-hover:bg-cyan-500 group-hover:text-black transition-all duration-300 flex items-center justify-center w-10 h-10 shrink-0">
+                            <Volume2 size={18} />
+                          </div>
+                          <div>
+                            <h4 className="text-sm md:text-base font-bold text-white uppercase tracking-wider">环绕音效</h4>
+                            <p className="text-[11px] md:text-xs text-slate-400 tracking-wider">层次丰富，沉浸聆听</p>
+                          </div>
+                        </div>
+
+                        {/* Bullet 3 */}
+                        <div className="flex items-center gap-4 group cursor-pointer">
+                          <div className="p-2.5 rounded-full border border-fuchsia-500/30 bg-fuchsia-500/5 text-fuchsia-500 shadow-[0_0_10px_rgba(217,70,239,0.15)] group-hover:bg-fuchsia-500 group-hover:text-black transition-all duration-300 flex items-center justify-center w-10 h-10 shrink-0">
+                            <Cpu size={18} />
+                          </div>
+                          <div>
+                            <h4 className="text-sm md:text-base font-bold text-white uppercase tracking-wider">机甲充电仓</h4>
+                            <p className="text-[11px] md:text-xs text-slate-400 tracking-wider">锋锐造型，燃航随行</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Button with Watch Now Icon */}
+                    <button
+                      onClick={() => {
+                        playGlitchSound(600, 'sine', 0.15);
+                        const video = document.getElementById('earbud-video-player-element') as HTMLVideoElement;
+                        if (video) {
+                          if (video.requestFullscreen) {
+                            video.requestFullscreen().then(() => {
+                              video.muted = false;
+                              video.play().catch(e => console.log(e));
+                            }).catch(e => console.log(e));
+                          } else if ((video as any).webkitRequestFullscreen) {
+                            (video as any).webkitRequestFullscreen();
+                            video.muted = false;
+                            video.play().catch(e => console.log(e));
+                          } else if ((video as any).webkitEnterFullscreen) {
+                            (video as any).webkitEnterFullscreen();
+                            video.muted = false;
+                            video.play().catch(e => console.log(e));
+                          }
+                        }
+                      }}
+                      className="w-full py-4 px-8 rounded-full bg-gradient-to-r from-red-700 via-red-600 to-red-500 hover:from-red-600 hover:via-red-500 hover:to-red-400 text-sm md:text-base font-bold font-mono tracking-widest text-white hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] hover:scale-[1.02] active:scale-95 transition-all uppercase flex items-center justify-center gap-2 cursor-pointer border border-white/10"
+                    >
+                      <Play size={18} fill="currentColor" />
+                      立即观看
+                    </button>
+
+                    {/* Product Details Display (3 1:1 images with centered captions matching reference perfectly) */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-mono text-slate-400 uppercase tracking-widest">// 产品细节展示</span>
+                        <span className="text-[10px] font-mono text-red-500 uppercase tracking-widest">DETAILS</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { url: "https://i.postimg.cc/T3hPyMhS/Chat-GPT-Image-2026nian7yue12ri-19-52-59-(2).png", label: "幻彩光效" },
+                          { url: "https://i.postimg.cc/3xWwy5Ws/Chat-GPT-Image-2026nian7yue12ri-19-52-59-(3).png", label: "机甲仓体" },
+                          { url: "https://i.postimg.cc/DwmzWk8V/Chat-GPT-Image-2026nian7yue12ri-21-57-34-(3).png", label: "入耳结构" }
+                        ].map((item, idx) => (
+                          <div 
+                            key={idx} 
+                            className="flex flex-col items-center gap-2 group cursor-pointer"
+                          >
+                            <div className="aspect-square w-full rounded-lg overflow-hidden border border-white/10 hover:border-red-500/50 bg-black/40 relative transition-all duration-300 hover:shadow-[0_0_15px_rgba(239,68,68,0.25)]">
+                              <img 
+                                src={item.url} 
+                                alt={item.label}
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                referrerPolicy="no-referrer"
+                              />
+                            </div>
+                            <span className="text-xs font-sans text-slate-400 tracking-wider group-hover:text-red-500 transition-colors">
+                              {item.label}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -887,52 +1045,52 @@ export default function SpiderVersePage({ onClose }: SpiderVersePageProps) {
                   {/* Right Column: Detailed Shoe Profile & Details Grid (Matching reference 2 perfectly) */}
                   <div className="lg:col-span-4 space-y-8 flex flex-col h-full justify-between">
                     <div className="space-y-6">
-                      <span className="text-base md:text-lg font-mono text-red-500 uppercase tracking-[0.3em] font-bold block">
+                      <span className="text-sm md:text-base font-mono text-red-500 uppercase tracking-[0.3em] font-bold block">
                         产品视频
                       </span>
 
-                      <h2 className="text-5xl md:text-6xl lg:text-7xl font-black font-orbitron uppercase text-white tracking-tight leading-none">
+                      <h2 className="text-4xl md:text-5xl lg:text-5xl font-black font-orbitron uppercase text-white tracking-tight leading-none">
                         曜蛛战靴 <span className="text-red-500">X1</span>
                       </h2>
 
-                      <div className="text-lg md:text-xl font-mono text-cyan-400 tracking-widest uppercase font-bold">
+                      <div className="text-sm md:text-base font-mono text-cyan-400 tracking-widest uppercase font-bold">
                         凌厉爆发，点亮每一次起跳
                       </div>
 
                       <div className="w-full h-[1px] bg-white/10 my-6" />
 
                       {/* 3 Cyber Feature Bullet Points matching reference image */}
-                      <div className="space-y-6 text-left">
+                      <div className="space-y-4 text-left">
                         {/* Bullet 1 */}
-                        <div className="flex items-center gap-5 group cursor-pointer">
-                          <div className="p-3.5 rounded-full border border-red-500/30 bg-red-500/5 text-red-500 shadow-[0_0_12px_rgba(239,68,68,0.2)] group-hover:bg-red-500 group-hover:text-black transition-all duration-300">
-                            <Target size={22} />
+                        <div className="flex items-center gap-4 group cursor-pointer">
+                          <div className="p-2.5 rounded-full border border-red-500/30 bg-red-500/5 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.15)] group-hover:bg-red-500 group-hover:text-black transition-all duration-300 flex items-center justify-center w-10 h-10 shrink-0">
+                            <Target size={18} />
                           </div>
                           <div>
-                            <h4 className="text-base md:text-lg font-bold text-white uppercase tracking-widest">轻量缓震</h4>
-                            <p className="text-xs md:text-sm text-slate-400 tracking-wider">落地回弹，步步有力</p>
+                            <h4 className="text-sm md:text-base font-bold text-white uppercase tracking-wider">轻量缓震</h4>
+                            <p className="text-[11px] md:text-xs text-slate-400 tracking-wider">落地回弹，步步有力</p>
                           </div>
                         </div>
 
                         {/* Bullet 2 */}
-                        <div className="flex items-center gap-5 group cursor-pointer">
-                          <div className="p-3.5 rounded-full border border-cyan-500/30 bg-cyan-500/5 text-cyan-500 shadow-[0_0_12px_rgba(6,182,212,0.2)] group-hover:bg-cyan-500 group-hover:text-black transition-all duration-300">
-                            <Shield size={22} />
+                        <div className="flex items-center gap-4 group cursor-pointer">
+                          <div className="p-2.5 rounded-full border border-cyan-500/30 bg-cyan-500/5 text-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.15)] group-hover:bg-cyan-500 group-hover:text-black transition-all duration-300 flex items-center justify-center w-10 h-10 shrink-0">
+                            <Shield size={18} />
                           </div>
                           <div>
-                            <h4 className="text-base md:text-lg font-bold text-white uppercase tracking-widest">动态包裹</h4>
-                            <p className="text-xs md:text-sm text-slate-400 tracking-wider">贴合支撑，稳住突破</p>
+                            <h4 className="text-sm md:text-base font-bold text-white uppercase tracking-wider">动态包裹</h4>
+                            <p className="text-[11px] md:text-xs text-slate-400 tracking-wider">贴合支撑，稳住突破</p>
                           </div>
                         </div>
 
                         {/* Bullet 3 */}
-                        <div className="flex items-center gap-5 group cursor-pointer">
-                          <div className="p-3.5 rounded-full border border-fuchsia-500/30 bg-fuchsia-500/5 text-fuchsia-500 shadow-[0_0_12px_rgba(217,70,239,0.2)] group-hover:bg-fuchsia-500 group-hover:text-black transition-all duration-300">
-                            <Eye size={22} />
+                        <div className="flex items-center gap-4 group cursor-pointer">
+                          <div className="p-2.5 rounded-full border border-fuchsia-500/30 bg-fuchsia-500/5 text-fuchsia-500 shadow-[0_0_10px_rgba(217,70,239,0.15)] group-hover:bg-fuchsia-500 group-hover:text-black transition-all duration-300 flex items-center justify-center w-10 h-10 shrink-0">
+                            <Eye size={18} />
                           </div>
                           <div>
-                            <h4 className="text-base md:text-lg font-bold text-white uppercase tracking-widest">夜光外底</h4>
-                            <p className="text-xs md:text-sm text-slate-400 tracking-wider">霓虹流光，锋芒尽显</p>
+                            <h4 className="text-sm md:text-base font-bold text-white uppercase tracking-wider">夜光外底</h4>
+                            <p className="text-[11px] md:text-xs text-slate-400 tracking-wider">霓虹流光，锋芒尽显</p>
                           </div>
                         </div>
                       </div>
@@ -1001,6 +1159,174 @@ export default function SpiderVersePage({ onClose }: SpiderVersePageProps) {
                 </motion.div>
 
                 {/* ======================================================== */}
+                {/* SECTION 5: DYNAMIC POSTER SHOWCASE                       */}
+                {/* ======================================================== */}
+                <motion.div 
+                  id="poster-section" 
+                  initial={{ opacity: 0, y: 50 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-10%" }}
+                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                  className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-24 lg:items-stretch items-start text-left pt-24 pb-12 min-h-[50vh] border-t border-white/5 scroll-mt-24"
+                >
+                  {/* Left Column: Poster Interactive Video Player */}
+                  <div className="lg:col-span-8 relative w-full flex flex-col h-full">
+                    <PosterVideoPlayer 
+                      isGlobalMuted={isMuted} 
+                      playGlitchSound={playGlitchSound} 
+                    />
+                  </div>
+
+                  {/* Right Column: High-tech info HUD */}
+                  <div className="lg:col-span-4 flex flex-col justify-between h-full py-4 space-y-8 lg:space-y-0">
+                    <div className="space-y-6">
+                      <div>
+                        <span className="text-xs font-mono text-red-500 font-bold tracking-widest uppercase block mb-2">
+                          // 跨次元媒介 // DYNAMIC POSTER
+                        </span>
+                        <h2 className="text-3xl md:text-5xl font-black tracking-tight font-orbitron text-white uppercase leading-none">
+                          蜘蛛侠动态海报 <span className="text-red-500 font-space text-2xl md:text-3xl font-normal block mt-1">GLITCH ART POSTER</span>
+                        </h2>
+                      </div>
+                      
+                      <p className="text-slate-400 font-sans text-sm md:text-base leading-relaxed">
+                        采用故障风格，搭配莫比乌斯环的设计，展现蜘蛛侠纵横宇宙的一个时空错乱的电影故事背景。数字脉冲与流光粒子在无限循环的莫比乌斯轨道中扭曲重组，在色彩碰撞与时空撕裂的错乱感中，勾勒出迈尔斯与格温跨越多元宇宙时空交错的无限可能。
+                      </p>
+
+                      {/* Specs Hud */}
+                      <div className="grid grid-cols-2 gap-4 pt-2">
+                        <div className="p-3 bg-white/[0.02] border border-white/5 rounded-lg">
+                          <span className="text-[10px] font-mono text-white/40 block uppercase">坐标宇宙 / UNIVERSE</span>
+                          <span className="text-xs font-bold text-white tracking-wider block mt-0.5 font-space">EARTH-1610 & EARTH-65</span>
+                        </div>
+                        <div className="p-3 bg-white/[0.02] border border-white/5 rounded-lg">
+                          <span className="text-[10px] font-mono text-white/40 block uppercase">设计结构 / STRUCTURE</span>
+                          <span className="text-xs font-bold text-red-400 tracking-wider block mt-0.5 font-space">MOBIUS STRIP</span>
+                        </div>
+                        <div className="p-3 bg-white/[0.02] border border-white/5 rounded-lg">
+                          <span className="text-[10px] font-mono text-white/40 block uppercase">视觉粒子 / PARTICLES</span>
+                          <span className="text-xs font-bold text-cyan-400 tracking-wider block mt-0.5 font-space">GLITCH WAVE DOTS</span>
+                        </div>
+                        <div className="p-3 bg-white/[0.02] border border-white/5 rounded-lg">
+                          <span className="text-[10px] font-mono text-white/40 block uppercase">音频电轨 / AUDIO RAIL</span>
+                          <span className="text-xs font-bold text-white tracking-wider block mt-0.5 font-space">SYNTH OVERDRIVE</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 pt-6 lg:pt-0">
+                      <div className="flex justify-between text-[10px] font-mono text-white/30 px-1">
+                        <span>EST. DEPLOYED: SYSTEM // SUCCESS</span>
+                        <span>RES: 3840 X 2160 ULTRA HD</span>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* ======================================================== */}
+                {/* SECTION 5.5: MULTIVERSE DYNAMIC IMAGERY (ANIMATED SLIDES) */}
+                {/* ======================================================== */}
+                <motion.div 
+                  id="showcase-slideshow" 
+                  initial={{ opacity: 0, y: 50 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-10%" }}
+                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                  className="space-y-12 pt-24 pb-12 border-t border-white/5 scroll-mt-24 w-full"
+                >
+                  <div className="text-left space-y-2">
+                    <p className="text-[10px] font-mono text-red-500 tracking-[0.3em] uppercase">// 建模渲染场景 / 3D MODELING & RENDERING</p>
+                    <h2 className="text-2xl md:text-3xl font-black font-orbitron tracking-widest uppercase text-white">
+                      C4D模型场景搭建
+                    </h2>
+                  </div>
+
+                  <HoverSlider className="w-full bg-black/30 border border-white/5 backdrop-blur-md rounded-2xl p-6 md:p-12 relative overflow-hidden">
+                    {/* Decorative cyberpunk grids or glowing backgrounds */}
+                    <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-red-500/50" />
+                    <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-red-500/50" />
+                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-cyan-500/50" />
+                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-cyan-500/50" />
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+                      
+                      {/* Left: Interactive titles */}
+                      <div className="lg:col-span-6 flex flex-col space-y-4 md:space-y-6 text-left">
+                        <div className="space-y-2">
+                          <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest block">
+                            [ 悬停触发现场维度同步 / HOVER TO RE-ALIGN ]
+                          </span>
+                        </div>
+                        
+                        <div className="flex flex-col space-y-3 md:space-y-5">
+                          {[
+                            { title: "CLAY MODEL", zh: "1.场景白模", tag: "C4D SHADING" },
+                            { title: "WARM PALETTE", zh: "2.暖色色调", tag: "COLOR GRADING" },
+                            { title: "COLD POSTER", zh: "3.冷色色调海报", tag: "VIBRANT IMPACT" },
+                            { title: "CLAY MODEL II", zh: "4.场景白模", tag: "STRUCTURE GRID" },
+                            { title: "CYBER WORLD", zh: "5.赛博朋克世界", tag: "NEON DENSITY" }
+                          ].map((item, idx) => (
+                            <div key={idx} className="group relative py-1 flex items-center justify-between border-b border-white/5 pb-2 cursor-pointer">
+                              <div className="flex items-baseline gap-3 md:gap-4">
+                                <span className="font-mono text-xs md:text-sm text-red-500/70 font-bold">0{idx + 1}</span>
+                                <TextStaggerHover
+                                  index={idx}
+                                  className="text-lg md:text-2xl lg:text-3xl font-black font-orbitron uppercase tracking-normal text-white cursor-pointer select-none"
+                                  text={item.title}
+                                />
+                              </div>
+                              <div className="flex flex-col items-end text-right">
+                                <span className="text-[10px] md:text-xs font-sans text-slate-300 font-medium group-hover:text-red-400 transition-colors">
+                                  {item.zh}
+                                </span>
+                                <span className="text-[8px] md:text-[10px] font-mono text-slate-500 tracking-wider">
+                                  {item.tag}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Right: Picture Display in HUD Style container */}
+                      <div className="lg:col-span-6 flex justify-center items-center w-full relative">
+                        {/* HUD corner lines */}
+                        <div className="absolute inset-0 border border-white/10 rounded-xl pointer-events-none" />
+                        
+                        <HoverSliderImageWrap className="w-full aspect-video rounded-xl overflow-hidden border border-white/10 shadow-[0_0_40px_rgba(239,68,68,0.15)] relative">
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 z-10 pointer-events-none" />
+                          
+                          {/* Scanlines effect overlay */}
+                          <div className="absolute inset-0 bg-scanlines opacity-[0.08] z-20 pointer-events-none" />
+                          
+                          {[
+                            { id: "s1", url: "https://i.postimg.cc/bvKSnWyV/zhi-zhu-xia.png", title: "SPIDER CORE" },
+                            { id: "s2", url: "https://i.postimg.cc/xCDq8mgj/11.png", title: "GLITCH SHADOW" },
+                            { id: "s3", url: "https://i.postimg.cc/fLnkyd5b/2.png", title: "MULTIVERSE SPLICE" },
+                            { id: "s4", url: "https://i.postimg.cc/8cT5BVqy/19.png", title: "NEON CHRONICLES" },
+                            { id: "s5", url: "https://i.postimg.cc/fLnkyd5Z/18.png", title: "DIMENSION MATRIX" }
+                          ].map((slide, index) => (
+                            <div key={slide.id} className="w-full h-full">
+                              <HoverSliderImage
+                                index={index}
+                                imageUrl={slide.url}
+                                src={slide.url}
+                                alt={slide.title}
+                                className="w-full h-full object-cover"
+                                loading="eager"
+                                decoding="async"
+                                referrerPolicy="no-referrer"
+                              />
+                            </div>
+                          ))}
+                        </HoverSliderImageWrap>
+                      </div>
+
+                    </div>
+                  </HoverSlider>
+                </motion.div>
+
+                {/* ======================================================== */}
                 {/* SECTION 3: THE WORLD AT A GLANCE (STUNNING BENTO CARDS)  */}
                 {/* ======================================================== */}
                 <motion.div 
@@ -1036,10 +1362,10 @@ export default function SpiderVersePage({ onClose }: SpiderVersePageProps) {
                         12+
                       </div>
                       <div className="text-[10px] font-mono font-bold tracking-widest text-cyan-400 uppercase mb-3">
-                        平行时空维度
+                        精选艺术创作 / DESIGN ARCHIVE
                       </div>
                       <p className="text-slate-400 text-xs leading-relaxed font-sans">
-                        跨越不同地球代号的平行时空，提取各维度最具代表性的朋克与数码极光美学，构建统一的产品视觉节点。
+                        汇集商业品牌设计、C4D三维动态模拟、基于 GPT Image 2 模型的先锋 AIGC 影像重塑、以及 AE 动效艺术等12项多媒介力作。
                       </p>
                     </div>
 
@@ -1057,10 +1383,10 @@ export default function SpiderVersePage({ onClose }: SpiderVersePageProps) {
                         240+
                       </div>
                       <div className="text-[10px] font-mono font-bold tracking-widest text-[#ff0055] uppercase mb-3">
-                        蜘蛛联盟精英成员
+                        三维拟真与美学渲染 / 3D RENDER ENGINE
                       </div>
                       <p className="text-slate-400 text-xs leading-relaxed font-sans">
-                        蜘蛛联盟专属数据库实时同步。不仅是一套静态周边，更是跨次元科技极客和潮流收藏家的精神共鸣。
+                        基于Arnold物理渲染器进行极细致纹理光影雕琢，融合朋克故障艺术与波普极光，将周边概念实体化拟真。
                       </p>
                     </div>
 
@@ -1078,10 +1404,10 @@ export default function SpiderVersePage({ onClose }: SpiderVersePageProps) {
                         50+
                       </div>
                       <div className="text-[10px] font-mono font-bold tracking-widest text-yellow-500 uppercase mb-3">
-                        定制潮玩艺术品
+                        影视动效及创意交互 / AE & MEDIA MOTION
                       </div>
                       <p className="text-slate-400 text-xs leading-relaxed font-sans">
-                        精心打磨的实体潮流周边与极富张力的3D模型库。全系列支持高帧率多轴动态交互，科技感深度拉满。
+                        融入 Adobe After Effects 极致动效与 Seedance 2.0 运镜渲染，配合 Framer Motion 弹性动效，打破单纯静态周边的拘泥，让科幻动感触手可及。
                       </p>
                     </div>
 
@@ -1099,10 +1425,10 @@ export default function SpiderVersePage({ onClose }: SpiderVersePageProps) {
                         ∞
                       </div>
                       <div className="text-[10px] font-mono font-bold tracking-widest text-purple-400 uppercase mb-3">
-                        多元命运事件
+                        前沿 AIGC 先锋实验 / AI EXPLORATIONS
                       </div>
                       <p className="text-slate-400 text-xs leading-relaxed font-sans">
-                        打破宿命式的命运闭环。由您亲手定制的周边搭配，每一次组合都是对传统框架和单调秩序的华丽解构。
+                        利用 GPT Image 2 模型深度生成与 Seedance 2.0 智能镜头驱动，融合潮流数字故障美学，提供具有无限张力的数字视觉和艺术解构。
                       </p>
                     </div>
 
@@ -1128,13 +1454,13 @@ export default function SpiderVersePage({ onClose }: SpiderVersePageProps) {
 
                   <div className="max-w-3xl space-y-4 relative z-10">
                     <h4 className="text-[10px] md:text-xs font-mono text-[#ff0055] uppercase tracking-[0.3em] font-bold">
-                      // 设计背景：置身多元宇宙，命运本是一场幻象
+                      // 核心设计理念：艺术、科技与交互的跨界聚变
                     </h4>
                     <h2 className="text-2xl md:text-4xl font-black tracking-tight font-orbitron text-white leading-tight uppercase">
                       打破一维桎梏，赋予产品流动的数字故障美学
                     </h2>
                     <p className="text-slate-300 font-sans text-sm md:text-base leading-relaxed">
-                      本案深度拆解了《蜘蛛侠：纵横宇宙》的视觉灵魂：将迈尔斯标志性的美式漫画黑白色调、蛛网裂纹与格温的幻彩水粉、朋克剪贴画风相互交织。传统的周边往往止步于印刷标准的Logo，而我们将这些视觉解构在材质、包装与数字HUD界面中。通过极富张力的产品渲染与微缩立体建模，呈现出仿佛下一秒就会闪烁传送穿梭在时空裂隙中的奇诡美感。
+                      本套蜘蛛侠潮流周边设计，是我作为数字创意设计师对《蜘蛛侠：纵横宇宙》故障艺术与潮流美学的深度解构。设计融汇 C4D 物理光影拟真渲染、GPT Image 2 先锋 AIGC 影像重构、Seedance 2.0 动感镜头渲染，以及 Adobe After Effects 专业级动效合成。传统的周边产品设计往往止步于印刷展示，而本案将迈尔斯的美漫黑白张力、格温的幻彩水粉、莫比乌斯的时空穿梭概念融入具有数字动效与流畅交互的界面与实体潮玩媒介中，呈现出完美的流动美学。
                     </p>
                     
                     <div className="pt-2">
@@ -1151,84 +1477,7 @@ export default function SpiderVersePage({ onClose }: SpiderVersePageProps) {
                   </div>
                 </motion.div>
 
-                {/* ======================================================== */}
-                {/* SECTION 5: GALLERY SHOWCASE & GRID                      */}
-                {/* ======================================================== */}
-                <motion.div 
-                  id="gallery-section" 
-                  initial={{ opacity: 0, y: 50 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-10%" }}
-                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                  className="space-y-8 pt-24 border-t border-white/5 scroll-mt-24 text-left"
-                >
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-end pb-4 gap-4">
-                    <div>
-                      <h2 className="text-2xl md:text-3xl font-black tracking-widest uppercase font-orbitron text-white">
-                        三维图库 <span className="text-red-500">// 3D 渲染图</span>
-                      </h2>
-                      <p className="text-xs font-mono text-white/40 uppercase mt-1">
-                        多元宇宙高分辨率概念潮玩周边三维设计图。
-                      </p>
-                    </div>
-                    <span className="text-xs font-mono text-cyan-400 tracking-wider">
-                      作品总数: {images.length} // 系统安全
-                    </span>
-                  </div>
 
-                  {/* 3D artifacts grid with neon borders on hover */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {images.map((img, idx) => (
-                      <motion.div
-                        key={idx}
-                        initial={{ opacity: 0, y: 30 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true, margin: "-10%" }}
-                        transition={{ duration: 0.6, delay: idx * 0.08 }}
-                        onClick={() => {
-                          setActiveImageIdx(idx);
-                          playGlitchSound(200 + idx * 40, 'triangle', 0.08);
-                          // Scroll smooth back to top slider if user clicks a grid image
-                          document.getElementById('trailers-section')?.scrollIntoView({ behavior: 'smooth' });
-                        }}
-                        className={`relative group overflow-hidden rounded-xl border border-white/10 bg-[#08080C] aspect-[4/3] cursor-pointer shadow-lg transition-all duration-300 ${
-                          activeImageIdx === idx ? 'border-[#ff0055] shadow-[0_0_15px_rgba(255,0,85,0.25)]' : 'hover:border-red-500/40'
-                        }`}
-                      >
-                        <img 
-                          src={img} 
-                          alt={`Spider-Man artifact ${idx}`} 
-                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 group-hover:brightness-110"
-                        />
-                        {/* Shading overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#03010b]/95 via-transparent to-transparent opacity-85 group-hover:opacity-60 transition-opacity duration-300" />
-                        
-                        {/* Interactive info HUD */}
-                        <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
-                          <div className="text-left">
-                            <span className="text-[9px] font-mono text-red-400/90 tracking-widest uppercase block mb-0.5">
-                              稀有珍藏 #{idx + 1}
-                            </span>
-                            <span className="text-xs font-bold text-white tracking-wider font-space">
-                              {categories[idx % categories.length].tag} // 概念设计
-                            </span>
-                          </div>
-                          
-                          <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 group-hover:bg-[#ff0055] group-hover:text-white flex items-center justify-center text-white/60 transition-all">
-                            <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  {/* Dot sliders indicators below gallery */}
-                  <div className="flex justify-center items-center gap-1.5 pt-4">
-                    {[0, 1, 2, 3].map((v) => (
-                      <span key={v} className={`w-1.5 h-1.5 rounded-full ${v === 0 ? 'bg-[#ff0055]' : 'bg-white/20'}`} />
-                    ))}
-                  </div>
-                </motion.div>
 
                 {/* ======================================================== */}
                 {/* SECTION 6: QUOTES & TESTIMONIALS SLIDER (MATCHING IMAGE) */}
@@ -1997,6 +2246,573 @@ function ShoeVideoPlayer({ isGlobalMuted, playGlitchSound }: ShoeVideoPlayerProp
               className="px-2 py-0.5 rounded border border-white/20 text-[10px] tracking-widest text-white/70 hover:border-white transition-colors cursor-pointer"
             >
               1080P
+            </span>
+
+            <button 
+              onClick={handleMuteToggle}
+              className="text-white hover:text-red-500 transition-colors cursor-pointer"
+            >
+              {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+            </button>
+
+            <button 
+              onClick={handleFullscreen}
+              className="text-white hover:text-red-500 transition-colors cursor-pointer"
+            >
+              <Maximize size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface EarbudVideoPlayerProps {
+  isGlobalMuted: boolean;
+  playGlitchSound: (freq?: number, type?: OscillatorType, duration?: number) => void;
+}
+
+function EarbudVideoPlayer({ isGlobalMuted, playGlitchSound }: EarbudVideoPlayerProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isMuted, setIsMuted] = useState(true);
+  const [progress, setProgress] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      if (!isFullscreen) {
+        videoRef.current.muted = true;
+        setIsMuted(true);
+      } else {
+        videoRef.current.muted = isGlobalMuted;
+        setIsMuted(isGlobalMuted);
+      }
+    }
+  }, [isGlobalMuted, isFullscreen]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleFullscreenChange = () => {
+      const activeFs = 
+        document.fullscreenElement || 
+        (document as any).webkitFullscreenElement || 
+        (document as any).mozFullScreenElement || 
+        (document as any).msFullscreenElement;
+      
+      const isFs = activeFs === video;
+      setIsFullscreen(isFs);
+      if (isFs) {
+        video.muted = false;
+        setIsMuted(false);
+      } else {
+        video.muted = true;
+        setIsMuted(true);
+      }
+    };
+
+    const handleWebkitBeginFullscreen = () => {
+      setIsFullscreen(true);
+      video.muted = false;
+      setIsMuted(false);
+    };
+
+    const handleWebkitEndFullscreen = () => {
+      setIsFullscreen(false);
+      video.muted = true;
+      setIsMuted(false);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+    video.addEventListener('webkitbeginfullscreen', handleWebkitBeginFullscreen);
+    video.addEventListener('webkitendfullscreen', handleWebkitEndFullscreen);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+      if (video) {
+        video.removeEventListener('webkitbeginfullscreen', handleWebkitBeginFullscreen);
+        video.removeEventListener('webkitendfullscreen', handleWebkitEndFullscreen);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    let hls: Hls | null = null;
+    const hlsUrl = "https://stream.mux.com/fIMLjkbZsKmQYjQYvhOYFCBGlw2POqOQ00SYNVnDmDkY.m3u8";
+
+    if (Hls.isSupported()) {
+      hls = new Hls({
+        autoStartLoad: true,
+        enableWorker: true,
+        lowLatencyMode: true
+      });
+      hls.loadSource(hlsUrl);
+      hls.attachMedia(video);
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = hlsUrl;
+    }
+
+    const handleTimeUpdate = () => {
+      if (video.duration) {
+        setCurrentTime(video.currentTime);
+        setProgress((video.currentTime / video.duration) * 100);
+      }
+    };
+
+    const handleDurationChange = () => {
+      setDuration(video.duration);
+    };
+
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    video.addEventListener('durationchange', handleDurationChange);
+    video.addEventListener('play', handlePlay);
+    video.addEventListener('pause', handlePause);
+
+    return () => {
+      if (video) {
+        video.removeEventListener('timeupdate', handleTimeUpdate);
+        video.removeEventListener('durationchange', handleDurationChange);
+        video.removeEventListener('play', handlePlay);
+        video.removeEventListener('pause', handlePause);
+      }
+      if (hls) {
+        hls.destroy();
+      }
+    };
+  }, []);
+
+  const handlePlayPause = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (isPlaying) {
+      video.pause();
+      playGlitchSound(120, 'sine', 0.05);
+    } else {
+      video.play().catch(e => console.log(e));
+      playGlitchSound(200, 'sine', 0.05);
+    }
+  };
+
+  const handleMuteToggle = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = !video.muted;
+    setIsMuted(video.muted);
+    playGlitchSound(220, 'triangle', 0.05);
+  };
+
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const video = videoRef.current;
+    if (!video || !video.duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pos = (e.clientX - rect.left) / rect.width;
+    video.currentTime = pos * video.duration;
+    playGlitchSound(150, 'sine', 0.03);
+  };
+
+  const handleFullscreen = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    playGlitchSound(350, 'sine', 0.1);
+    
+    if (video.requestFullscreen) {
+      video.requestFullscreen().then(() => {
+        video.muted = false;
+        setIsMuted(false);
+        video.play().catch(e => console.log(e));
+      }).catch(e => console.log(e));
+    } else if ((video as any).webkitRequestFullscreen) {
+      (video as any).webkitRequestFullscreen();
+      video.muted = false;
+      setIsMuted(false);
+      video.play().catch(e => console.log(e));
+    } else if ((video as any).webkitEnterFullscreen) {
+      (video as any).webkitEnterFullscreen();
+      video.muted = false;
+      setIsMuted(false);
+      video.play().catch(e => console.log(e));
+    }
+  };
+
+  const formatTime = (time: number) => {
+    if (isNaN(time)) return '00:00';
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div 
+      className="relative w-full h-full min-h-[350px] lg:min-h-0 aspect-[16/10] lg:aspect-auto bg-black rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(255,0,85,0.15)] group"
+    >
+      <div className="absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-red-600/25 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-blue-600/15 to-transparent blur-3xl pointer-events-none" />
+      
+      <video
+        ref={videoRef}
+        id="earbud-video-player-element"
+        className="w-full h-full object-cover cursor-pointer select-none pointer-events-auto"
+        onClick={handlePlayPause}
+        autoPlay
+        muted={isMuted}
+        loop
+        playsInline
+      />
+
+      {/* Centered play UI overlay */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleFullscreen();
+            const video = videoRef.current;
+            if (video) {
+              video.play().catch(e => console.log(e));
+            }
+          }}
+          className="pointer-events-auto w-16 h-16 md:w-20 md:h-20 rounded-full bg-red-600/90 text-white hover:bg-red-500 flex items-center justify-center border border-white/20 shadow-[0_0_30px_rgba(255,0,85,0.6)] cursor-pointer transition-all duration-300 hover:scale-110 active:scale-95 group/btn z-10"
+        >
+          <Play size={24} fill="currentColor" className="ml-1 text-white group-hover/btn:scale-110 transition-transform duration-300" />
+        </button>
+      </div>
+
+      <div className="absolute inset-0 bg-scanlines opacity-10 pointer-events-none" />
+
+      <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 bg-gradient-to-t from-black/95 via-black/85 to-transparent z-20 flex flex-col gap-3">
+        
+        <div 
+          className="w-full h-1 bg-white/20 hover:h-1.5 rounded-full cursor-pointer transition-all duration-200 relative group/seek"
+          onClick={handleSeek}
+        >
+          <div 
+            className="absolute top-0 left-0 h-full bg-red-600 rounded-full"
+            style={{ width: `${progress}%` }}
+          />
+          <div 
+            className="absolute top-1/2 w-3.5 h-3.5 bg-white border-2 border-red-500 rounded-full shadow-[0_0_10px_rgba(239,68,68,1)] -translate-y-1/2 -translate-x-1/2 opacity-0 group-hover/seek:opacity-100 transition-opacity duration-150"
+            style={{ left: `${progress}%` }}
+          />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={handlePlayPause}
+              className="text-white hover:text-red-500 transition-colors cursor-pointer"
+            >
+              {isPlaying ? <Pause size={18} /> : <Play size={18} fill="currentColor" />}
+            </button>
+            
+            <button 
+              onClick={() => playGlitchSound(240, 'sine', 0.05)}
+              className="text-white/60 hover:text-white transition-colors cursor-pointer"
+            >
+              <SkipForward size={16} />
+            </button>
+
+            <span className="font-mono text-xs text-white/70 tracking-wider">
+              {formatTime(currentTime)} <span className="text-white/30 mx-1">/</span> {formatTime(duration || 88)}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4 font-mono text-xs text-white/80">
+            <span 
+              onClick={() => playGlitchSound(300, 'sine', 0.05)}
+              className="px-2 py-0.5 rounded border border-white/20 text-[10px] tracking-widest text-white/70 hover:border-white transition-colors cursor-pointer"
+            >
+              1080P
+            </span>
+
+            <button 
+              onClick={handleMuteToggle}
+              className="text-white hover:text-red-500 transition-colors cursor-pointer"
+            >
+              {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+            </button>
+
+            <button 
+              onClick={handleFullscreen}
+              className="text-white hover:text-red-500 transition-colors cursor-pointer"
+            >
+              <Maximize size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface PosterVideoPlayerProps {
+  isGlobalMuted: boolean;
+  playGlitchSound: (freq?: number, type?: OscillatorType, duration?: number) => void;
+}
+
+function PosterVideoPlayer({ isGlobalMuted, playGlitchSound }: PosterVideoPlayerProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isMuted, setIsMuted] = useState(true);
+  const [progress, setProgress] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      if (!isFullscreen) {
+        videoRef.current.muted = true;
+        setIsMuted(true);
+      } else {
+        videoRef.current.muted = isGlobalMuted;
+        setIsMuted(isGlobalMuted);
+      }
+    }
+  }, [isGlobalMuted, isFullscreen]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleFullscreenChange = () => {
+      const activeFs = 
+        document.fullscreenElement || 
+        (document as any).webkitFullscreenElement || 
+        (document as any).mozFullScreenElement || 
+        (document as any).msFullscreenElement;
+      
+      const isFs = activeFs === video;
+      setIsFullscreen(isFs);
+      if (isFs) {
+        video.muted = false;
+        setIsMuted(false);
+      } else {
+        video.muted = true;
+        setIsMuted(true);
+      }
+    };
+
+    const handleWebkitBeginFullscreen = () => {
+      setIsFullscreen(true);
+      video.muted = false;
+      setIsMuted(false);
+    };
+
+    const handleWebkitEndFullscreen = () => {
+      setIsFullscreen(false);
+      video.muted = true;
+      setIsMuted(true);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+    video.addEventListener('webkitbeginfullscreen', handleWebkitBeginFullscreen);
+    video.addEventListener('webkitendfullscreen', handleWebkitEndFullscreen);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+      if (video) {
+        video.removeEventListener('webkitbeginfullscreen', handleWebkitBeginFullscreen);
+        video.removeEventListener('webkitendfullscreen', handleWebkitEndFullscreen);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleTimeUpdate = () => {
+      if (video.duration) {
+        setCurrentTime(video.currentTime);
+        setProgress((video.currentTime / video.duration) * 100);
+      }
+    };
+
+    const handleDurationChange = () => {
+      setDuration(video.duration);
+    };
+
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    video.addEventListener('durationchange', handleDurationChange);
+    video.addEventListener('play', handlePlay);
+    video.addEventListener('pause', handlePause);
+
+    return () => {
+      if (video) {
+        video.removeEventListener('timeupdate', handleTimeUpdate);
+        video.removeEventListener('durationchange', handleDurationChange);
+        video.removeEventListener('play', handlePlay);
+        video.removeEventListener('pause', handlePause);
+      }
+    };
+  }, []);
+
+  const handlePlayPause = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (isPlaying) {
+      video.pause();
+      playGlitchSound(120, 'sine', 0.05);
+    } else {
+      video.play().catch(e => console.log(e));
+      playGlitchSound(200, 'sine', 0.05);
+    }
+  };
+
+  const handleMuteToggle = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = !video.muted;
+    setIsMuted(video.muted);
+    playGlitchSound(220, 'triangle', 0.05);
+  };
+
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const video = videoRef.current;
+    if (!video || !video.duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pos = (e.clientX - rect.left) / rect.width;
+    video.currentTime = pos * video.duration;
+    playGlitchSound(150, 'sine', 0.03);
+  };
+
+  const handleFullscreen = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    playGlitchSound(350, 'sine', 0.1);
+    
+    if (video.requestFullscreen) {
+      video.requestFullscreen().then(() => {
+        video.muted = false;
+        setIsMuted(false);
+        video.play().catch(e => console.log(e));
+      }).catch(e => console.log(e));
+    } else if ((video as any).webkitRequestFullscreen) {
+      (video as any).webkitRequestFullscreen();
+      video.muted = false;
+      setIsMuted(false);
+      video.play().catch(e => console.log(e));
+    } else if ((video as any).webkitEnterFullscreen) {
+      (video as any).webkitEnterFullscreen();
+      video.muted = false;
+      setIsMuted(false);
+      video.play().catch(e => console.log(e));
+    }
+  };
+
+  const formatTime = (time: number) => {
+    if (isNaN(time)) return '00:00';
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div 
+      className="relative w-full h-full min-h-[350px] lg:min-h-0 aspect-[16/10] lg:aspect-auto bg-black rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(255,0,85,0.15)] group"
+    >
+      <div className="absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-red-600/25 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-blue-600/15 to-transparent blur-3xl pointer-events-none" />
+      
+      <video
+        ref={videoRef}
+        id="poster-video-player-element"
+        className="w-full h-full object-cover cursor-pointer select-none pointer-events-auto"
+        onClick={handlePlayPause}
+        src="https://res.cloudinary.com/mvdcjs0y/video/upload/v1784531137/%E7%A9%BF%E6%A2%AD%E6%97%B6%E7%A9%BA_dbwmsm.mp4"
+        autoPlay
+        muted={isMuted}
+        loop
+        playsInline
+      />
+      
+      {/* Centered play UI overlay */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleFullscreen();
+            const video = videoRef.current;
+            if (video) {
+              video.play().catch(e => console.log(e));
+            }
+          }}
+          className="pointer-events-auto w-16 h-16 md:w-20 md:h-20 rounded-full bg-red-600/90 text-white hover:bg-red-500 flex items-center justify-center border border-white/20 shadow-[0_0_30px_rgba(255,0,85,0.6)] cursor-pointer transition-all duration-300 hover:scale-110 active:scale-95 group/btn z-10"
+        >
+          <Play size={24} fill="currentColor" className="ml-1 text-white group-hover/btn:scale-110 transition-transform duration-300" />
+        </button>
+      </div>
+
+      <div className="absolute inset-0 bg-scanlines opacity-10 pointer-events-none" />
+
+      <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 bg-gradient-to-t from-black/95 via-black/85 to-transparent z-20 flex flex-col gap-3">
+        
+        <div 
+          className="w-full h-1 bg-white/20 hover:h-1.5 rounded-full cursor-pointer transition-all duration-200 relative group/seek"
+          onClick={handleSeek}
+        >
+          <div 
+            className="absolute top-0 left-0 h-full bg-red-600 rounded-full"
+            style={{ width: `${progress}%` }}
+          />
+          <div 
+            className="absolute top-1/2 w-3.5 h-3.5 bg-white border-2 border-red-500 rounded-full shadow-[0_0_10px_rgba(239,68,68,1)] -translate-y-1/2 -translate-x-1/2 opacity-0 group-hover/seek:opacity-100 transition-opacity duration-150"
+            style={{ left: `${progress}%` }}
+          />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={handlePlayPause}
+              className="text-white hover:text-red-500 transition-colors cursor-pointer"
+            >
+              {isPlaying ? <Pause size={18} /> : <Play size={18} fill="currentColor" />}
+            </button>
+            
+            <button 
+              onClick={() => playGlitchSound(240, 'sine', 0.05)}
+              className="text-white/60 hover:text-white transition-colors cursor-pointer"
+            >
+              <SkipForward size={16} />
+            </button>
+
+            <span className="font-mono text-xs text-white/70 tracking-wider">
+              {formatTime(currentTime)} <span className="text-white/30 mx-1">/</span> {formatTime(duration || 15)}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4 font-mono text-xs text-white/80">
+            <span 
+              onClick={() => playGlitchSound(300, 'sine', 0.05)}
+              className="px-2 py-0.5 rounded border border-white/20 text-[10px] tracking-widest text-white/70 hover:border-white transition-colors cursor-pointer"
+            >
+              4K ULTRA
             </span>
 
             <button 
