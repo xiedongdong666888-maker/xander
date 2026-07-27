@@ -46,12 +46,7 @@ export const WORK_ITEMS: WorkItem[] = [
     imageUrl: 'https://i.postimg.cc/Gp7JWpnv/2.png',
     description: '沉浸式商业空间展示设计，专注于空间叙事和品牌氛围的营造。通过独特的光影运用与空间布局，打造极具未来感的商业体验场域。',
     year: '2024',
-    detailImages: [
-      'https://i.postimg.cc/287vp5nX/20.png',
-      'https://i.postimg.cc/WbvrfZqC/21.png',
-      'https://i.postimg.cc/tgMWrmFC/22.png',
-      'https://i.postimg.cc/15r6xzD2/23.png'
-    ]
+    detailImages: []
   },
   {
     id: '4',

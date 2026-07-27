@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { PageState } from './types';
 import StarField from './components/StarField';
 import Navigation from './components/Navigation';
@@ -18,8 +19,50 @@ import CatalogPage from './components/pages/CatalogPage';
 import AboutPage from './components/pages/AboutPage';
 import ContactPage from './components/pages/ContactPage';
 
+const getPageIndex = (page: PageState): number => {
+  switch (page) {
+    case PageState.COVER: return 0;
+    case PageState.HOME: return 1;
+    case PageState.WORKS: return 2;
+    case PageState.CATALOG: return 3;
+    case PageState.ABOUT: return 4;
+    case PageState.CONTACT: return 5;
+    default: return 1;
+  }
+};
+
+const pageVariants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 120 : -120,
+    opacity: 0,
+    scale: 0.98,
+    filter: 'blur(10px)',
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+    scale: 1,
+    filter: 'blur(0px)',
+    transition: {
+      duration: 0.65,
+      ease: [0.16, 1, 0.3, 1], // Custom premium easeOutExpo curve
+    }
+  },
+  exit: (direction: number) => ({
+    x: direction > 0 ? -120 : 120,
+    opacity: 0,
+    scale: 0.98,
+    filter: 'blur(10px)',
+    transition: {
+      duration: 0.55,
+      ease: [0.16, 1, 0.3, 1]
+    }
+  })
+};
+
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<PageState>(PageState.COVER);
+  const [direction, setDirection] = useState<number>(1);
   
   // Transition loading states
   const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
@@ -29,6 +72,9 @@ const App: React.FC = () => {
   // High-tech page transition logic with requestAnimationFrame
   const handleNavigate = (page: PageState) => {
     if (page === currentPage) return;
+    const currentIndex = getPageIndex(currentPage);
+    const targetIndex = getPageIndex(page);
+    setDirection(targetIndex > currentIndex ? 1 : -1);
     setPendingPage(page);
     setIsTransitioning(true);
     setProgress(0);
@@ -126,10 +172,20 @@ const App: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <main className="transition-all duration-700 ease-out">
-        <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
-          {renderPage()}
-        </div>
+      <main className="relative overflow-hidden w-full">
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={currentPage}
+            custom={direction}
+            variants={pageVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            className="w-full relative"
+          >
+            {renderPage()}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* AI Assistant */}

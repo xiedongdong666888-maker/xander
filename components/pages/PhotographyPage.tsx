@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, createRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Menu, Play, ZoomIn, ArrowRight, Grid, Eye, Compass, Image, Layers, Sparkles } from 'lucide-react';
+import { X, Menu, Play, ZoomIn, ArrowRight, Grid, Eye, Compass, Image, Layers, Sparkles, Camera, Aperture, RefreshCw } from 'lucide-react';
+import { items as mouseTrailItems } from '@/components/ui/image-mousetrail-without-component-utils/constant';
 
 interface PhotographyPageProps {
   onClose: () => void;
@@ -21,6 +22,154 @@ export default function PhotographyPage({ onClose }: PhotographyPageProps) {
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [selectedPhotoCategory, setSelectedPhotoCategory] = useState<string>('全部');
+
+  // Loading interface states
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [loadingProgress, setLoadingProgress] = useState<number>(0);
+  const [loadingStatusText, setLoadingStatusText] = useState<string>('初始化光影空间 // INITIALIZING CANVAS');
+
+  // Mouse trail refs & handlers for loading screen
+  const trailContainerRef = useRef<HTMLDivElement>(null);
+  const trailRefs = useRef(mouseTrailItems.map(() => createRef<HTMLImageElement>()));
+  const trailGlobalIndex = useRef<number>(0);
+  const trailLastPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Mouse trail refs & handlers for Hero Home section
+  const heroTrailContainerRef = useRef<HTMLElement>(null);
+  const heroTrailRefs = useRef(mouseTrailItems.map(() => createRef<HTMLImageElement>()));
+  const heroTrailGlobalIndex = useRef<number>(0);
+  const heroTrailLastPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const handleTrailMove = (e: React.MouseEvent | React.TouchEvent | React.PointerEvent) => {
+    if (!trailContainerRef.current) return;
+    const clientX = 'touches' in e ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? (e as React.TouchEvent).touches[0].clientY : (e as React.MouseEvent).clientY;
+
+    const dist = Math.hypot(clientX - trailLastPos.current.x, clientY - trailLastPos.current.y);
+    if (dist > 35) {
+      const containerRect = trailContainerRef.current.getBoundingClientRect();
+      const relativeX = clientX - containerRect.left;
+      const relativeY = clientY - containerRect.top;
+
+      const leadIndex = trailGlobalIndex.current % trailRefs.current.length;
+      const tailIndex = (trailGlobalIndex.current - 5) % trailRefs.current.length;
+
+      const leadImg = trailRefs.current[leadIndex]?.current;
+      const tailImg = tailIndex >= 0 ? trailRefs.current[tailIndex]?.current : null;
+
+      if (leadImg) {
+        leadImg.style.left = `${relativeX}px`;
+        leadImg.style.top = `${relativeY}px`;
+        leadImg.style.zIndex = ((trailGlobalIndex.current % mouseTrailItems.length) + 1).toString();
+        leadImg.dataset.status = 'active';
+        setTimeout(() => {
+          if (leadImg) leadImg.dataset.status = 'inactive';
+        }, 1100);
+      }
+
+      if (tailImg) {
+        tailImg.dataset.status = 'inactive';
+      }
+
+      trailLastPos.current = { x: clientX, y: clientY };
+      trailGlobalIndex.current++;
+    }
+  };
+
+  const handleHeroTrailMove = (e: React.MouseEvent | React.TouchEvent | React.PointerEvent) => {
+    if (!heroTrailContainerRef.current) return;
+    const clientX = 'touches' in e ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? (e as React.TouchEvent).touches[0].clientY : (e as React.MouseEvent).clientY;
+
+    const dist = Math.hypot(clientX - heroTrailLastPos.current.x, clientY - heroTrailLastPos.current.y);
+    if (dist > 35) {
+      const containerRect = heroTrailContainerRef.current.getBoundingClientRect();
+      const relativeX = clientX - containerRect.left;
+      const relativeY = clientY - containerRect.top;
+
+      const leadIndex = heroTrailGlobalIndex.current % heroTrailRefs.current.length;
+      const tailIndex = (heroTrailGlobalIndex.current - 5) % heroTrailRefs.current.length;
+
+      const leadImg = heroTrailRefs.current[leadIndex]?.current;
+      const tailImg = tailIndex >= 0 ? heroTrailRefs.current[tailIndex]?.current : null;
+
+      if (leadImg) {
+        leadImg.style.left = `${relativeX}px`;
+        leadImg.style.top = `${relativeY}px`;
+        leadImg.style.zIndex = ((heroTrailGlobalIndex.current % mouseTrailItems.length) + 5).toString();
+        leadImg.dataset.status = 'active';
+        setTimeout(() => {
+          if (leadImg) leadImg.dataset.status = 'inactive';
+        }, 1100);
+      }
+
+      if (tailImg) {
+        tailImg.dataset.status = 'inactive';
+      }
+
+      heroTrailLastPos.current = { x: clientX, y: clientY };
+      heroTrailGlobalIndex.current++;
+    }
+  };
+
+  // Trigger or reset loading animation
+  const startLoadingAnimation = () => {
+    setIsLoading(true);
+    setLoadingProgress(0);
+    setLoadingStatusText('初始化光影空间 // INITIALIZING CANVAS');
+  };
+
+  useEffect(() => {
+    if (!isLoading) return;
+
+    let animationFrameId: number;
+    let startTime: number | null = null;
+    const duration = 5000; // 5.0s steady & immersive loading duration
+
+    const step = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const rawProgress = Math.min(elapsed / duration, 1);
+
+      // Non-linear organic progress speed
+      let easeProgress = rawProgress;
+      if (rawProgress < 0.35) {
+        easeProgress = Math.pow(rawProgress / 0.35, 1.2) * 0.40;
+      } else if (rawProgress < 0.8) {
+        const t = (rawProgress - 0.35) / 0.45;
+        easeProgress = 0.40 + (1 - Math.pow(1 - t, 2.2)) * 0.48;
+      } else {
+        const t = (rawProgress - 0.8) / 0.2;
+        easeProgress = 0.88 + t * 0.12;
+      }
+
+      const currentPercent = Math.floor(easeProgress * 100);
+      setLoadingProgress(currentPercent);
+
+      if (currentPercent < 25) {
+        setLoadingStatusText('初始化光影空间 // INITIALIZING CANVAS');
+      } else if (currentPercent < 55) {
+        setLoadingStatusText('载入 17 幅高定影像作品 // LOADING HIGH-RES ARCHIVE');
+      } else if (currentPercent < 85) {
+        setLoadingStatusText('校准色彩与光线参数 // CALIBRATING COLOR & EXPOSURE');
+      } else {
+        setLoadingStatusText('即刻呈现 // READY TO PRESENT');
+      }
+
+      if (rawProgress < 1) {
+        animationFrameId = requestAnimationFrame(step);
+      } else {
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 400);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(step);
+    return () => {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    };
+  }, [isLoading]);
 
   // Cooldown / Transition guard for video switcher
   const handleVideoSwitch = (index: number) => {
@@ -297,6 +446,171 @@ export default function PhotographyPage({ onClose }: PhotographyPageProps) {
 
   return (
     <div className="fixed inset-0 z-[150] bg-black text-white overflow-y-auto overflow-x-hidden selection:bg-white selection:text-black custom-scrollbar">
+      {/* ==========================================
+          LOADING INTERFACE OVERLAY (Matching Image 2)
+          ========================================== */}
+      <AnimatePresence mode="wait">
+        {isLoading && (
+          <motion.div
+            key="photography-loading-screen"
+            ref={trailContainerRef}
+            onMouseMove={handleTrailMove}
+            onTouchMove={handleTrailMove}
+            initial={{ opacity: 1 }}
+            exit={{
+              opacity: 0,
+              scale: 1.05,
+              filter: 'blur(12px)',
+              transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] }
+            }}
+            className="fixed inset-0 z-[300] bg-[#0c0d0e] text-white flex flex-col justify-between font-system-ui select-none overflow-hidden cursor-crosshair"
+          >
+            {/* Subtle Ambient Vignette & Grain Overlay */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.05)_0%,rgba(0,0,0,0.92)_100%)] pointer-events-none z-[1]" />
+            <div className="absolute inset-0 bg-black/40 pointer-events-none z-[2]" />
+
+            {/* Interactive Image Mouse Trail Layer */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden z-[15]">
+              {mouseTrailItems.map((item, index) => (
+                <img
+                  key={item.id || index}
+                  ref={trailRefs.current[index]}
+                  src={item.url}
+                  alt={item.title}
+                  data-index={index}
+                  data-status="inactive"
+                  className="object-cover w-40 h-52 sm:w-48 sm:h-64 scale-0 opacity-0 data-[status='active']:scale-100 data-[status='active']:opacity-100 transition-all duration-500 ease-out absolute -translate-y-1/2 -translate-x-1/2 rounded-xl shadow-[0_30px_70px_rgba(0,0,0,0.95)] border border-white/25 pointer-events-none"
+                />
+              ))}
+            </div>
+
+            {/* ====================================================
+                1. TOP NAVIGATION BAR (Matching Image 2)
+                ==================================================== */}
+            <header className="relative z-20 w-full px-6 sm:px-12 py-6 border-b border-white/10 flex items-center justify-between">
+              {/* Left: Brand Logo & Title */}
+              <div className="flex flex-col text-left">
+                <span className="font-serif tracking-[0.35em] text-lg sm:text-xl font-normal text-white/90 uppercase">
+                  L U M I N A
+                </span>
+                <span className="text-[9px] sm:text-[10px] tracking-[0.4em] text-white/40 uppercase font-light mt-0.5">
+                  PHOTOGRAPHY
+                </span>
+              </div>
+
+              {/* Center Nav Links */}
+              <nav className="hidden md:flex items-center space-x-8 sm:space-x-10 text-xs tracking-[0.2em] text-white/70">
+                <span className="hover:text-amber-200 transition-colors cursor-pointer text-amber-100 font-medium">光影画廊</span>
+                <span className="hover:text-amber-200 transition-colors cursor-pointer">镜头参数</span>
+                <span className="hover:text-amber-200 transition-colors cursor-pointer">创作理念</span>
+                <span className="hover:text-amber-200 transition-colors cursor-pointer">灵感共鸣</span>
+              </nav>
+
+              {/* Right Action Icons */}
+              <div className="flex items-center space-x-4 text-white/60">
+                <span className="text-xs font-mono tracking-widest hover:text-white transition-colors cursor-pointer font-bold">||</span>
+                <div className="grid grid-cols-2 gap-0.5 w-3.5 h-3.5 cursor-pointer opacity-70 hover:opacity-100 transition-opacity">
+                  <div className="w-1 h-1 bg-white rounded-full" />
+                  <div className="w-1 h-1 bg-white rounded-full" />
+                  <div className="w-1 h-1 bg-white rounded-full" />
+                  <div className="w-1 h-1 bg-white rounded-full" />
+                </div>
+              </div>
+            </header>
+
+            {/* ====================================================
+                2. LEFT SIDEBAR METADATA (Matching Image 2)
+                ==================================================== */}
+            <aside className="hidden lg:flex fixed left-8 top-1/2 -translate-y-1/2 z-20 flex-col items-center gap-12 text-[10px] font-mono tracking-[0.3em] text-white/40 uppercase select-none">
+              <div className="[writing-mode:vertical-rl] rotate-180 flex items-center gap-3">
+                <span>EST. 2018</span>
+                <div className="w-8 h-[1px] bg-white/20" />
+              </div>
+              <div className="[writing-mode:vertical-rl] rotate-180">
+                <span>BASED IN TOKYO</span>
+              </div>
+            </aside>
+
+            {/* ====================================================
+                3. CENTER HERO TYPOGRAPHY & LOADING PROGRESS (Matching Image 2)
+                ==================================================== */}
+            <main className="relative z-20 flex-1 flex flex-col items-center justify-center px-6 text-center my-auto">
+              
+              {/* Top Ring Spinner Icon */}
+              <div className="w-6 h-6 rounded-full border border-amber-200/40 border-t-amber-100 animate-spin mb-4 flex items-center justify-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-100/80" />
+              </div>
+
+              {/* Top Eyebrow Tagline */}
+              <span className="text-[10px] sm:text-xs text-white/50 tracking-[0.35em] font-mono uppercase mb-3">
+                PREPARING EXPERIENCE
+              </span>
+
+              {/* Main Title (High Elegance Display Serif in 2 lines) */}
+              <h1 className="text-5xl sm:text-7xl md:text-8xl font-instrument-serif tracking-tight leading-[0.95] text-[#f4eedf] mb-3 select-none">
+                Photography
+                <br />
+                Portfolio
+              </h1>
+
+              {/* Chinese Subtitle */}
+              <p className="text-sm sm:text-base font-light text-amber-100/70 tracking-[0.4em] my-3">
+                作 品 集 加 载 中
+              </p>
+
+              {/* Progress Bar & Percentage Row */}
+              <div className="w-full max-w-sm sm:max-w-md my-4 flex items-center gap-4">
+                {/* Champagne/Gold Thin Progress Bar Track */}
+                <div className="flex-1 h-[3px] bg-white/10 rounded-full overflow-hidden relative border border-white/5 shadow-inner">
+                  <motion.div 
+                    className="h-full bg-gradient-to-r from-[#b38e4a] via-[#e2c784] to-[#f7ebc6] rounded-full relative"
+                    style={{ width: `${loadingProgress}%` }}
+                    transition={{ duration: 0.1, ease: 'easeOut' }}
+                  >
+                    <div className="absolute right-0 top-0 bottom-0 w-2 bg-white blur-[1px] shadow-[0_0_8px_#f5e6be]" />
+                  </motion.div>
+                </div>
+
+                {/* Percentage Indicator */}
+                <span className="text-sm sm:text-base font-mono font-medium tracking-wider text-[#e2c784] min-w-[45px] text-right">
+                  {loadingProgress}%
+                </span>
+              </div>
+
+              {/* Bottom Loading Stage Status */}
+              <p className="text-[10px] sm:text-[11px] text-white/40 font-mono tracking-[0.3em] uppercase mt-1">
+                {loadingStatusText || "LOADING HIGH-QUALITY IMAGES"}
+              </p>
+
+              {/* Skip Animation Interactive Link */}
+              <button
+                onClick={() => setIsLoading(false)}
+                className="mt-6 text-[10px] text-white/30 hover:text-white/80 tracking-[0.25em] font-mono uppercase transition-colors underline underline-offset-4 cursor-pointer"
+              >
+                跳过动画 // SKIP INTRO
+              </button>
+            </main>
+
+            {/* ====================================================
+                4. BOTTOM FOOTER BAR (Matching Image 2)
+                ==================================================== */}
+            <footer className="relative z-20 w-full px-6 sm:px-12 py-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] font-mono tracking-[0.25em] text-white/40 uppercase">
+              {/* Left Social Links */}
+              <div className="flex items-center space-x-6 sm:space-x-8">
+                <span className="hover:text-white transition-colors cursor-pointer">INSTAGRAM</span>
+                <span className="hover:text-white transition-colors cursor-pointer">BEHANCE</span>
+                <span className="hover:text-white transition-colors cursor-pointer">500PX</span>
+              </div>
+
+              {/* Right Copyright */}
+              <div className="text-center sm:text-right text-white/30">
+                © 2024 LUMINA PHOTOGRAPHY. ALL RIGHTS RESERVED.
+              </div>
+            </footer>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* 2. CUSTOM CSS STYLES FOR ANIMATIONS AND COMPONENT GLASS EFFECTS */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
@@ -357,7 +671,27 @@ export default function PhotographyPage({ onClose }: PhotographyPageProps) {
       {/* ==========================================
           3. HERO VIEWPORT (100vh SECTION CONTAINER)
           ========================================== */}
-      <section id="lumora-hero" className="relative w-full h-screen overflow-hidden bg-black flex flex-col justify-between">
+      <section 
+        id="lumora-hero" 
+        ref={heroTrailContainerRef}
+        onMouseMove={handleHeroTrailMove}
+        onTouchMove={handleHeroTrailMove}
+        className="relative w-full h-screen overflow-hidden bg-black flex flex-col justify-between cursor-crosshair"
+      >
+        {/* Interactive Image Mouse Trail Layer for Home Hero */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-[5]">
+          {mouseTrailItems.map((item, index) => (
+            <img
+              key={`hero-trail-${item.id || index}`}
+              ref={heroTrailRefs.current[index]}
+              src={item.url}
+              alt={item.title}
+              data-index={index}
+              data-status="inactive"
+              className="object-cover w-40 h-52 sm:w-48 sm:h-64 scale-0 opacity-0 data-[status='active']:scale-100 data-[status='active']:opacity-100 transition-all duration-500 ease-out absolute -translate-y-1/2 -translate-x-1/2 rounded-xl shadow-[0_30px_70px_rgba(0,0,0,0.95)] border border-white/25 pointer-events-none"
+            />
+          ))}
+        </div>
         
         {/* BACKGROUND VIDEO LAYERS */}
         <div className="absolute inset-0 w-full h-full pointer-events-none z-0">
@@ -426,7 +760,17 @@ export default function PhotographyPage({ onClose }: PhotographyPageProps) {
           </div>
 
           {/* Close & Hamburger Container */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            {/* Replay Loading Button */}
+            <button 
+              onClick={startLoadingAnimation}
+              className="liquid-glass text-white/80 hover:text-white px-3.5 py-2.5 rounded-full text-xs font-semibold tracking-wider flex items-center gap-1.5 transition-all"
+              title="重新体验加载界面"
+            >
+              <RefreshCw size={13} className="hover:rotate-180 transition-transform duration-500" />
+              <span className="hidden sm:inline">重新加载</span>
+            </button>
+
             {/* Elegant Floating Close Button */}
             <button 
               onClick={onClose}

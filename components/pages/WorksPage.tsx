@@ -7,6 +7,7 @@ import GlowingFooter from '../GlowingFooter';
 import LoaderLab from '../LoaderLab';
 import { BlurFade } from '../ui/blur-fade';
 import PhotographyPage from './PhotographyPage';
+import CommercialSpacePage from './CommercialSpacePage';
 
 interface WorksPageProps {
   onNavigate?: (page: PageState) => void;
@@ -195,6 +196,12 @@ const WorksPage: React.FC<WorksPageProps> = ({ onNavigate }) => {
         {selectedWork && (
           selectedWork.id === '11' ? (
             <PhotographyPage onClose={() => {
+              setSelectedWork(null);
+              setTransitionState('idle');
+              document.body.style.overflow = '';
+            }} />
+          ) : selectedWork.id === '3' ? (
+            <CommercialSpacePage onClose={() => {
               setSelectedWork(null);
               setTransitionState('idle');
               document.body.style.overflow = '';
