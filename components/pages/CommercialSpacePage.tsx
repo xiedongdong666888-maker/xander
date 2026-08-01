@@ -7,6 +7,7 @@ import {
   Sofa, Utensils, ChefHat, Bed, BookOpen, Bath
 } from "lucide-react";
 import ThreeDViewer from "../ui/ThreeDViewer";
+import { CardStack } from "../ui/card-stack";
 
 interface CommercialSpacePageProps {
   onClose: () => void;
@@ -282,33 +283,50 @@ export default function CommercialSpacePage({ onClose }: CommercialSpacePageProp
       title: "极简私宅",
       area: "128㎡",
       type: "住宅空间",
+      tag: "住宅空间",
       year: "2024",
-      image: "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=800&q=80"
+      imageSrc: "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=800&q=80",
+      description: "极致简练的现代生活空间，注重天然光影与通透平面的呼应。"
     },
     {
       id: "2",
       title: "包豪斯之家",
       area: "143㎡",
       type: "住宅空间",
+      tag: "住宅空间",
       year: "2024",
-      image: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80",
-      isFeatured: true
+      imageSrc: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80",
+      description: "包豪斯经典理性线条与几何美学，实用与高雅艺术相结合。"
     },
     {
       id: "3",
       title: "光影艺术馆",
       area: "260㎡",
       type: "商业空间",
+      tag: "商业空间",
       year: "2023",
-      image: "https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=800&q=80"
+      imageSrc: "https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=800&q=80",
+      description: "光影交织的艺术展陈与沉浸式沉淀空间，打造震撼视觉体验。"
     },
     {
       id: "4",
       title: "山景别墅",
       area: "380㎡",
       type: "住宅空间",
+      tag: "住宅空间",
       year: "2023",
-      image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80"
+      imageSrc: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80",
+      description: "依山而建的观景大宅，开阔全景落地窗与自然山色融为一体。"
+    },
+    {
+      id: "5",
+      title: "原木美学私宅",
+      area: "195㎡",
+      type: "住宅空间",
+      tag: "住宅空间",
+      year: "2024",
+      imageSrc: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=800&q=80",
+      description: "温润原木与清雅暖色调相结合，营造静谧舒适的居家气场。"
     }
   ];
 
@@ -597,56 +615,61 @@ export default function CommercialSpacePage({ onClose }: CommercialSpacePageProp
             </div>
           </div>
 
-          {/* Horizontal Projects Cards Row */}
-          <div className="relative z-10 w-full px-4 md:px-12 mt-6 md:mt-2 flex items-center">
-            <div className="flex overflow-x-auto gap-4 md:gap-6 w-full snap-x snap-mandatory pb-4 scrollbar-none items-end justify-start md:justify-center">
-              {projects.map((project, idx) => (
-                <motion.div
-                  key={project.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.6, delay: idx * 0.1 }}
-                  className={`relative rounded-[1.8rem] md:rounded-[2.4rem] overflow-hidden group/card shadow-sm cursor-pointer snap-start shrink-0 transition-all duration-300 ${
-                    project.isFeatured 
-                      ? 'w-[280px] md:w-[35%] lg:w-[33%] h-[380px] md:h-[420px] lg:h-[450px] border border-white/40' 
-                      : 'w-[240px] md:w-[22%] lg:w-[20%] h-[340px] md:h-[370px] lg:h-[400px]'
-                  }`}
-                >
-                  {/* Image background with modern ease transition */}
-                  <img 
-                    src={project.image} 
-                    alt={project.title}
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover/card:scale-105"
-                    referrerPolicy="no-referrer"
-                  />
+          {/* 3D Fan Card Stack Projects Row */}
+          <div className="relative z-10 w-full px-4 md:px-12 mt-4 md:mt-6 mb-2 flex items-center justify-center">
+            <div className="w-full max-w-5xl mx-auto">
+              <CardStack
+                items={projects}
+                initialIndex={1}
+                cardWidth={460}
+                cardHeight={340}
+                overlap={0.46}
+                spreadDeg={34}
+                autoAdvance={true}
+                intervalMs={3200}
+                pauseOnHover={true}
+                showDots={true}
+                renderCard={(item, { active }) => (
+                  <div className="relative h-full w-full group/card overflow-hidden bg-[#2D2D2D] rounded-2xl shadow-2xl border border-white/20">
+                    {/* Background image */}
+                    <img 
+                      src={item.imageSrc} 
+                      alt={item.title}
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover/card:scale-105"
+                      referrerPolicy="no-referrer"
+                    />
 
-                  {/* Smooth dark overlay for readability */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent z-10" />
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent z-10 pointer-events-none" />
 
-                  {/* Card Content layer */}
-                  <div className="absolute inset-0 z-20 p-5 md:p-6 lg:p-8 flex flex-col justify-end text-left text-white">
-                    <h3 className={`font-normal tracking-tight mb-1 md:mb-2 transition-transform duration-300 group-hover/card:-translate-y-1 ${
-                      project.isFeatured ? 'text-2xl md:text-3xl' : 'text-xl md:text-2xl'
-                    }`}>
-                      {project.title}
-                    </h3>
+                    {/* Card Details */}
+                    <div className="absolute inset-0 z-20 p-6 md:p-8 flex flex-col justify-end text-left text-white">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <h3 className="text-2xl md:text-3xl font-bold tracking-tight text-white drop-shadow-md">
+                          {item.title}
+                        </h3>
+                        <span className="text-xs font-semibold bg-white/25 backdrop-blur-md px-3.5 py-1 rounded-full text-white border border-white/20">
+                          {item.tag}
+                        </span>
+                      </div>
 
-                    <div className="flex items-center gap-2 text-xs md:text-sm text-white/70 font-normal mb-1">
-                      <span>{project.area}</span>
-                      <span className="text-white/30">|</span>
-                      <span>{project.type}</span>
-                    </div>
+                      <p className="text-xs text-white/75 line-clamp-2 leading-relaxed font-light mb-3">
+                        {item.description}
+                      </p>
 
-                    <span className="text-xs md:text-sm text-white/50 font-normal">{project.year}</span>
+                      <div className="pt-2 border-t border-white/20 flex items-center justify-between text-xs md:text-sm text-white/80 font-medium">
+                        <span>{item.area} · {item.type}</span>
+                        <span className="text-white/60">{item.year}</span>
+                      </div>
 
-                    {/* Interactive Arrow Button */}
-                    <div className="absolute bottom-5 right-5 md:bottom-6 md:right-6 lg:bottom-8 lg:right-8 bg-white/90 hover:bg-white text-[#2D2D2D] w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-transform hover:scale-110 shadow-lg cursor-pointer">
-                      <ArrowRight className="w-5 h-5 text-black" />
+                      {/* Interactive Arrow */}
+                      <div className="absolute bottom-6 right-6 bg-white hover:bg-amber-100 text-[#2D2D2D] w-11 h-11 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 shadow-lg cursor-pointer">
+                        <ArrowRight className="w-5 h-5 text-black" />
+                      </div>
                     </div>
                   </div>
-                </motion.div>
-              ))}
+                )}
+              />
             </div>
           </div>
 
